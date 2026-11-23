@@ -112,25 +112,59 @@ let previousGpsPosition=null;
 let lastRerouteAt=0;
 let navCameraReady=false;
 
+function applyGtaSixMapPalette(){
+ const layers=map.getStyle().layers||[];
+ const safePaint=(id,key,value)=>{try{map.setPaintProperty(id,key,value)}catch(e){}};
+ layers.forEach(layer=>{
+  const id=(layer.id||'').toLowerCase();
+  const sourceLayer=(layer['source-layer']||'').toLowerCase();
+  if(layer.type==='background')safePaint(layer.id,'background-color','#c9c4b5');
+  if(layer.type==='fill'){
+   if(/water/.test(id)||sourceLayer==='water')safePaint(layer.id,'fill-color','#78aeb7');
+   else if(/park|garden|grass|wood|forest/.test(id)||/park|grass|wood|forest/.test(sourceLayer))safePaint(layer.id,'fill-color','#83a17c');
+   else if(/landuse|landcover|residential|industrial|commercial/.test(id)||/landuse|landcover/.test(sourceLayer))safePaint(layer.id,'fill-color','#c4c0b2');
+   else if(/building/.test(id)||sourceLayer==='building')safePaint(layer.id,'fill-color','#a9a294');
+  }
+  if(layer.type==='line'){
+   if(/waterway/.test(id)||sourceLayer==='waterway')safePaint(layer.id,'line-color','#6b9fa9');
+   else if(/transportation|road|street/.test(id)||sourceLayer==='transportation'){
+    const isCasing=/casing|outline|case/.test(id);
+    const isMajor=/motorway|trunk|primary|highway/.test(id);
+    safePaint(layer.id,'line-color',isCasing?'#8d887d':(isMajor?'#e1b77c':'#eee9dc'));
+   }
+   else if(/boundary/.test(id)||sourceLayer==='boundary')safePaint(layer.id,'line-color','#aaa596');
+  }
+  if(layer.type==='symbol'){
+   if(/water/.test(id))safePaint(layer.id,'text-color','#426f79');
+   else if(/road|transportation/.test(id))safePaint(layer.id,'text-color','#655f55');
+   else safePaint(layer.id,'text-color','#4f5149');
+   safePaint(layer.id,'text-halo-color','#d8d2c3');
+   safePaint(layer.id,'text-halo-width',1.1);
+  }
+ });
+}
 map.on('load',()=>{
  document.getElementById('message').textContent='MAPPA PRONTA · GTA NAVIGATION';
+ applyGtaSixMapPalette();
  const layers=map.getStyle().layers;
  const labelLayer=layers.find(l=>l.type==='symbol' && l.layout && l.layout['text-field']);
- if(labelLayer){
+ if(labelLayer&&!map.getLayer('3d-buildings')){
   map.addLayer({
    id:'3d-buildings',
    source:'openmaptiles',
    'source-layer':'building',
    type:'fill-extrusion',
-   minzoom:13,
+   minzoom:12,
    paint:{
-    'fill-extrusion-color':'#59636b',
+    'fill-extrusion-color':['interpolate',['linear'],['coalesce',['get','render_height'],8],0,'#c4bba8',18,'#a99f8d',55,'#877f73'],
     'fill-extrusion-height':['coalesce',['get','render_height'],8],
     'fill-extrusion-base':['coalesce',['get','render_min_height'],0],
-    'fill-extrusion-opacity':0.75
+    'fill-extrusion-opacity':0.98,
+    'fill-extrusion-vertical-gradient':true
    }
   },labelLayer.id);
  }
+ try{map.setFog({color:'#d5cfbf','high-color':'#e8dfc9','space-color':'#111820','horizon-blend':0.08,'star-intensity':0});}catch(e){}
 });
 
 function locate(){
