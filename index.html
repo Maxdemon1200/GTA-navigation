@@ -534,36 +534,68 @@ async function loadSelectedPois(){
  ];
  let data=null,lastError=null;
  for(const server of servers){
+  let timer=null;
   try{
-   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),30000);
+   const controller=new AbortController();
+   timer=setTimeout(()=>controller.abort(),30000);
    const response=await fetch(server,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8','Accept':'application/json'},body:'data='+encodeURIComponent(query),signal:controller.signal});
-   clearTimeout(timer);
    if(!response.ok)throw new Error('HTTP '+response.status);
    const result=await response.json();
    if(!Array.isArray(result.elements))throw new Error('Risposta cartografica non valida');
    data=result;break;
   }catch(error){lastError=error;}
+  finally{if(timer)clearTimeout(timer);}
  }
- if(!data){status.textContent='Ricerca temporaneamente non disponibile. Riprova tra qualche secondo.';console.warn('POI Overpass:',lastError);return;}
  const fallbackNames={restaurant:'Ristorante',fast_food:'Fast food',cafe:'Bar e caffè',fuel:'Distributore',parking:'Parcheggio',pharmacy:'Farmacia',hospital:'Ospedale',supermarket:'Supermercato',cinema:'Cinema',beach:'Spiaggia',monument:'Monumento',museum:'Museo',atm:'Bancomat'};
  const icons={restaurant:'🍽️',fast_food:'🍔',cafe:'☕',fuel:'⛽',parking:'🅿️',pharmacy:'✚',hospital:'✚',supermarket:'🛒',cinema:'🎬',beach:'🏖️',monument:'🏛️',museum:'🏛️',atm:'🏧'};
- const seen=new Set();
- data.elements.slice(0,250).forEach(el=>{
-  const lat=el.lat??el.center?.lat,lon=el.lon??el.center?.lon;
-  if(typeof lat!=='number'||typeof lon!=='number')return;
-  const key=selected.find(k=>{const tag=poiTags[k];return tag&&el.tags?.[tag[0]]===tag[1];})||selected[0];
-  const name=el.tags?.name||el.tags?.['name:it']||fallbackNames[key]||'Punto di interesse';
-  const identity=el.type+':'+el.id;if(seen.has(identity))return;seen.add(identity);
-  const marker=document.createElement('div');marker.className='poi-marker';marker.title=name;
-  const icon=document.createElement('span');icon.className='poi-marker-icon';icon.textContent=icons[key]||'●';
-  const label=document.createElement('span');label.className='poi-marker-name';label.textContent=name;
+ const records=[],seen=new Set();
+ if(data?.elements){
+  data.elements.forEach(el=>{
+   const lat=el.lat??el.center?.lat,lon=el.lon??el.center?.lon;
+   if(typeof lat!=='number'||typeof lon!=='number')return;
+   const key=selected.find(k=>{const tag=poiTags[k];return tag&&el.tags?.[tag[0]]===tag[1];});
+   if(!key)return;
+   const identity=el.type+':'+el.id;if(seen.has(identity))return;seen.add(identity);
+   records.push({lat,lon,key,name:el.tags?.name||el.tags?.['name:it']||fallbackNames[key],identity});
+  });
+ }
+ // Photon è un secondo indice gratuito: integra Overpass e viene interrogato solo per le categorie selezionate.
+ const photonTerms={restaurant:'restaurant',fast_food:'fast food',cafe:'cafe',fuel:'fuel station',parking:'parking',pharmacy:'pharmacy',hospital:'hospital',supermarket:'supermarket',cinema:'cinema',beach:'beach',monument:'monument',museum:'museum',atm:'ATM'};
+ for(const key of selected){
+  try{
+   const url='https://photon.komoot.io/api/?q='+encodeURIComponent(photonTerms[key]||key)+'&lat='+c.lat+'&lon='+c.lng+'&limit=35&lang=it';
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
+   let response;
+   try{response=await fetch(url,{signal:controller.signal,headers:{'Accept':'application/json'}});}
+   finally{clearTimeout(timer);}
+   if(!response.ok)continue;
+   const result=await response.json();
+   (result.features||[]).forEach(feature=>{
+    const p=feature.properties||{},coords=feature.geometry?.coordinates;
+    if(!Array.isArray(coords)||coords.length<2)return;
+    // Accetta solo risultati classificati da OpenStreetMap nella categoria richiesta.
+    const expected=poiTags[key];
+    if(expected&&(p.osm_key!==expected[0]||p.osm_value!==expected[1]))return;
+    const identity=p.osm_type&&p.osm_id?'osm:'+p.osm_type+':'+p.osm_id:'photon:'+key+':'+coords.join(',');
+    if(seen.has(identity))return;seen.add(identity);
+    records.push({lat:Number(coords[1]),lon:Number(coords[0]),key,name:p.name||p.street||fallbackNames[key],identity});
+   });
+  }catch(error){console.warn('POI Photon '+key+':',error);}
+ }
+ if(!records.length){
+  status.textContent=data?'Nessun punto trovato nelle fonti gratuite entro 7 km. Sposta la mappa o prova un’altra categoria.':'Ricerca non disponibile: i servizi cartografici gratuiti non rispondono. Riprova tra poco.';
+  if(lastError)console.warn('POI Overpass:',lastError);
+  return;
+ }
+ records.slice(0,300).forEach(record=>{
+  const marker=document.createElement('div');marker.className='poi-marker';marker.title=record.name;
+  const icon=document.createElement('span');icon.className='poi-marker-icon';icon.textContent=icons[record.key]||'●';
+  const label=document.createElement('span');label.className='poi-marker-name';label.textContent=record.name;
   marker.append(icon,label);
-  const popup=new maplibregl.Popup({offset:18}).setText(name);
-  poiMarkers.push(new maplibregl.Marker({element:marker,anchor:'bottom'}).setLngLat([lon,lat]).setPopup(popup).addTo(map));
+  const popup=new maplibregl.Popup({offset:18}).setText(record.name);
+  poiMarkers.push(new maplibregl.Marker({element:marker,anchor:'bottom'}).setLngLat([record.lon,record.lat]).setPopup(popup).addTo(map));
  });
- status.textContent=poiMarkers.length
-  ?poiMarkers.length+' punti trovati entro 7 km.'
-  :'Nessun punto trovato entro 7 km. Sposta la mappa o prova un’altra categoria.';
+ status.textContent=poiMarkers.length+' punti trovati dalle fonti gratuite entro 7 km.';
 }
 // I punti selezionati restano sulla mappa durante la navigazione: niente richieste ripetute ad ogni movimento.
 document.getElementById('destination').addEventListener('keydown',e=>{if(e.key==='Enter')searchPlace()});
