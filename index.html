@@ -38,7 +38,12 @@ button{border:0;border-radius:2px;background:var(--lime);color:#151a10;font:900 
 .maplibregl-ctrl-group{background:#171b16!important;border:1px solid var(--line)!important;border-radius:3px!important;overflow:hidden;box-shadow:0 8px 24px #0008!important}
 .maplibregl-ctrl-group button{background:transparent!important;width:36px!important;height:36px!important}
 .maplibregl-ctrl-group button span{filter:invert(1)}
+
+#results{display:none;position:absolute;top:145px;left:20px;width:min(390px,calc(100vw - 40px));max-height:42vh;overflow:auto;background:rgba(12,16,12,.96);border:1px solid var(--line);border-left:3px solid var(--lime);z-index:5;box-shadow:0 12px 35px #000b;backdrop-filter:blur(14px)}
+.result-item{display:block;width:100%;padding:11px 13px;text-align:left;background:transparent;color:#f5f5eb;border:0;border-bottom:1px solid #ffffff20;font:600 13px 'Rajdhani';letter-spacing:.3px;line-height:1.35}
+.result-item:hover{background:#b7f34a;color:#111}
 @media(max-width:600px){
+ #results{top:127px;left:12px;width:calc(100vw - 24px)}
  .top{top:12px;left:12px;right:12px}.logo{font-size:29px}.logo span{font-size:10px;letter-spacing:3px;margin-top:6px}
  #gps{font-size:9px;letter-spacing:1px}.top .panel{padding:9px 10px}
  .search{top:68px;left:12px;width:calc(100vw - 24px);padding:9px}
@@ -60,6 +65,7 @@ button{border:0;border-radius:2px;background:var(--lime);color:#151a10;font:900 
  <input id="destination" placeholder="Cerca una destinazione...">
  <button onclick="searchPlace()">CERCA</button>
 </div>
+<div id="results"></div>
 <div id="message">◆ ESPLORAZIONE LIBERA · MAPPA PRONTA</div>
 <div class="bottom">
  <div class="panel">
@@ -137,24 +143,37 @@ function resetView(){map.easeTo({bearing:0,pitch:is3D?60:0,duration:700})}
 async function searchPlace(){
  const q=document.getElementById('destination').value.trim();
  if(!q)return;
- document.getElementById('message').textContent='RICERCA DESTINAZIONE...';
+ const results=document.getElementById('results');
+ results.innerHTML='';results.style.display='none';
+ document.getElementById('message').textContent='RICERCA INDIRIZZO...';
  try{
-  const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(q));
+  const url='https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&countrycodes=it&q='+encodeURIComponent(q);
+  const r=await fetch(url,{headers:{'Accept-Language':'it'}});
   const data=await r.json();
-  if(!data.length){document.getElementById('message').textContent='DESTINAZIONE NON TROVATA';return}
-  const p=[Number(data[0].lon),Number(data[0].lat)];
-  destinationPosition=p;
-  if(destinationMarker)destinationMarker.remove();
-  destinationMarker=new maplibregl.Marker({color:'#ffbd38'}).setLngLat(p).addTo(map);
-  map.flyTo({center:p,zoom:16,pitch:60});
-  document.getElementById('status').textContent='DESTINAZIONE';
-  document.getElementById('distance').textContent=data[0].display_name;
-  const startButton=document.getElementById('start-nav');
-  startButton.classList.add('visible');
-  startButton.classList.remove('stop');
-  startButton.textContent='▶ AVVIA NAVIGAZIONE';
-  document.getElementById('message').textContent='DESTINAZIONE TROVATA · PREMI AVVIA NAVIGAZIONE';
- }catch(e){document.getElementById('message').textContent='ERRORE DI CONNESSIONE'}
+  if(!data.length){document.getElementById('message').textContent='INDIRIZZO NON TROVATO · CONTROLLA LA VIA';return}
+  results.style.display='block';
+  data.forEach(item=>{
+   const option=document.createElement('button');
+   option.className='result-item';option.type='button';
+   option.textContent=item.display_name;
+   option.addEventListener('click',()=>selectDestination(item));
+   results.appendChild(option);
+  });
+  document.getElementById('message').textContent='SELEZIONA L’INDIRIZZO CORRETTO · IL PERCORSO PARTIRÀ SUBITO';
+ }catch(e){document.getElementById('message').textContent='ERRORE DI CONNESSIONE · RIPROVA'}
+}
+function selectDestination(item){
+ document.getElementById('results').style.display='none';
+ destinationPosition=[Number(item.lon),Number(item.lat)];
+ if(destinationMarker)destinationMarker.remove();
+ destinationMarker=new maplibregl.Marker({color:'#ffbd38'}).setLngLat(destinationPosition).addTo(map);
+ document.getElementById('status').textContent='CALCOLO PERCORSO';
+ document.getElementById('distance').textContent=item.display_name;
+ const startButton=document.getElementById('start-nav');
+ startButton.classList.add('visible');startButton.classList.remove('stop');
+ startButton.disabled=false;startButton.textContent='▶ CALCOLO IN CORSO...';
+ document.getElementById('message').textContent='◆ DESTINAZIONE SELEZIONATA · CALCOLO DEL PERCORSO PIÙ VELOCE';
+ toggleNavigation();
 }
 async function toggleNavigation(){
  const button=document.getElementById('start-nav');
@@ -212,6 +231,7 @@ async function toggleNavigation(){
  },{enableHighAccuracy:true,timeout:15000});
 }
 document.getElementById('destination').addEventListener('keydown',e=>{if(e.key==='Enter')searchPlace()});
+document.addEventListener('click',e=>{if(!e.target.closest('.search')&&!e.target.closest('#results'))document.getElementById('results').style.display='none'});
 </script>
 </body>
 </html>
