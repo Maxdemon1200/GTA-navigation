@@ -7,39 +7,60 @@
 <link href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.js"></script>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=Rajdhani:wght@500;600;700&display=swap');
+:root{--lime:#b7f34a;--panel:rgba(15,19,15,.9);--line:rgba(224,239,211,.22)}
 *{box-sizing:border-box}
-body{margin:0;background:#090d12;color:white;font-family:Arial,sans-serif;overflow:hidden}
+body{margin:0;background:#090d12;color:#f5f5eb;font-family:'Rajdhani',sans-serif;overflow:hidden}
 #map{position:absolute;inset:0}
-.top{position:absolute;top:15px;left:15px;right:15px;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
-.logo{font-size:19px;font-weight:900;letter-spacing:2px;text-shadow:0 2px 8px #000}
-.logo span{color:#a8e638}
-.panel{background:#101820eF;border:1px solid #52616b;border-radius:12px;padding:12px;box-shadow:0 5px 20px #0008}
-.search{position:absolute;top:65px;left:15px;right:15px;display:flex;gap:7px}
-input{flex:1;min-width:0;background:#101820;color:white;border:1px solid #64727b;border-radius:8px;padding:13px;font-size:15px;outline:none}
-button{border:0;border-radius:8px;background:#a8e638;color:#101609;font-weight:bold;padding:12px;cursor:pointer}
-.bottom{position:absolute;bottom:18px;left:15px;right:15px;display:flex;justify-content:space-between;align-items:end;gap:10px}
-.info{font-size:12px;color:#b9c5cc}
-.big{font-size:25px;font-weight:900;margin-top:4px}
-.controls{display:flex;flex-direction:column;gap:8px}
-.controls button{min-width:48px;background:#101820;color:white;border:1px solid #64727b;font-size:18px}
-#message{position:absolute;top:125px;left:15px;right:15px;text-align:center;font-size:12px;color:white;text-shadow:0 2px 5px black;pointer-events:none}
-@media(min-width:700px){.search{right:auto;width:420px}.bottom{right:auto;width:420px}.top{right:25px;left:25px}}
+#map:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,#080b0877,transparent 22%,transparent 72%,#080b0866)}
+.top{position:absolute;top:17px;left:20px;right:20px;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
+.logo{font:900 35px/.8 'Barlow Condensed';letter-spacing:1px;color:#fff;text-shadow:2px 3px 0 #30352b,0 4px 12px #000}
+.logo span{display:block;color:var(--lime);font:800 13px 'Rajdhani';letter-spacing:5px;margin-top:7px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:13px 15px;box-shadow:0 8px 26px #0009;backdrop-filter:blur(13px)}
+#gps{font:700 11px 'Rajdhani';letter-spacing:1.7px;color:#dce5d4}
+.search{position:absolute;top:83px;left:20px;right:auto;width:min(390px,calc(100vw - 40px));display:flex;gap:7px;padding:12px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--lime);box-shadow:0 12px 35px #0008;backdrop-filter:blur(14px)}
+input{flex:1;min-width:0;background:#090c09;color:white;border:1px solid #596050;border-radius:2px;padding:12px;font:600 15px 'Rajdhani';outline:none}
+input:focus{border-color:var(--lime)}
+input::placeholder{color:#879080}
+button{border:0;border-radius:2px;background:var(--lime);color:#151a10;font:900 13px 'Rajdhani';letter-spacing:1.5px;padding:0 16px;cursor:pointer}
+.bottom{position:absolute;bottom:18px;left:20px;right:20px;display:flex;justify-content:space-between;align-items:end;gap:10px}
+.bottom>.panel{width:min(390px,calc(100vw - 40px));border-top:2px solid var(--lime)}
+.info{font:700 11px 'Rajdhani';letter-spacing:2px;color:#aab4a1}
+.big{font:900 27px/.95 'Barlow Condensed';letter-spacing:1px;margin-top:7px;color:#fff}
+.controls{display:flex;flex-direction:column;gap:7px}
+.controls button{width:44px;height:44px;min-width:44px;padding:0;background:var(--panel);color:#fff;border:1px solid var(--line);font-size:16px;backdrop-filter:blur(10px);box-shadow:0 5px 16px #0008}
+.controls button:first-child{background:var(--lime);color:#151a10;border-color:var(--lime)}
+#message{position:absolute;top:145px;left:22px;right:20px;text-align:left;font:700 11px 'Rajdhani';letter-spacing:1.5px;color:#e7f2d9;text-shadow:0 2px 8px #000;pointer-events:none}
+.maplibregl-ctrl-bottom-right{right:16px;bottom:18px}
+.maplibregl-ctrl-group{background:#171b16!important;border:1px solid var(--line)!important;border-radius:3px!important;overflow:hidden;box-shadow:0 8px 24px #0008!important}
+.maplibregl-ctrl-group button{background:transparent!important;width:36px!important;height:36px!important}
+.maplibregl-ctrl-group button span{filter:invert(1)}
+@media(max-width:600px){
+ .top{top:12px;left:12px;right:12px}.logo{font-size:29px}.logo span{font-size:10px;letter-spacing:3px;margin-top:6px}
+ #gps{font-size:9px;letter-spacing:1px}.top .panel{padding:9px 10px}
+ .search{top:68px;left:12px;width:calc(100vw - 24px);padding:9px}
+ .bottom{left:12px;right:12px;bottom:12px}.bottom>.panel{width:calc(100vw - 24px);padding:10px 13px}
+ .big{font-size:23px}.controls{position:absolute;right:0;bottom:88px;flex-direction:row;gap:6px}
+ .controls button{width:39px;height:39px;min-width:39px}
+ #message{top:127px;left:14px;font-size:10px}
+ .maplibregl-ctrl-bottom-right{right:12px;bottom:12px}
+}
 </style>
 </head>
 <body>
 <div id="map"></div>
 <div class="top">
- <div class="logo">GTA <span>NAVIGATION</span></div>
+ <div class="logo">GTA<span>NAVIGATION SYSTEM</span></div>
  <div class="panel info" id="gps">GPS: IN ATTESA</div>
 </div>
 <div class="search">
  <input id="destination" placeholder="Cerca una destinazione...">
  <button onclick="searchPlace()">CERCA</button>
 </div>
-<div id="message">ESPLORA LA MAPPA · TOCCA GPS PER LOCALIZZARTI</div>
+<div id="message">◆ ESPLORAZIONE LIBERA · MAPPA PRONTA</div>
 <div class="bottom">
  <div class="panel">
-  <div class="info">STATO NAVIGAZIONE</div>
+  <div class="info">NAVIGATION SYSTEM</div>
   <div class="big" id="status">FREE ROAM</div>
   <div class="info" id="distance">Nessun percorso attivo</div>
  </div>
