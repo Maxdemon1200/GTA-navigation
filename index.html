@@ -47,6 +47,12 @@ button{border:0;border-radius:2px;background:var(--lime);color:#151a10;font:900 
 #nav-stats span{display:flex;flex-direction:column;gap:3px}#nav-stats b{font:800 17px 'Barlow Condensed';color:#fff;letter-spacing:.5px}
 @media(max-width:600px){#nav-hud{top:68px;left:12px;width:calc(100vw - 24px);padding:10px 12px}#nav-turn{font-size:19px}}
 #poi-panel{position:absolute;top:145px;right:20px;width:270px;z-index:3;padding:0;overflow:hidden;border-left:3px solid var(--lime)}
+#poi-drawer-handle{display:none;position:absolute;z-index:8;left:0;top:45%;width:42px;height:76px;border:1px solid #ffffff44;border-left:0;border-radius:0 9px 9px 0;background:rgba(12,16,12,.94);color:#fff;font:900 20px 'Rajdhani';box-shadow:0 5px 20px #0009}
+#nav-menu-actions{display:none;padding:10px 12px;border-top:1px solid #ffffff24;border-bottom:1px solid #ffffff24;grid-template-columns:1fr 1fr;gap:7px}
+#nav-menu-actions button{min-height:36px;padding:7px;background:#292331;color:#eee4ff;border:1px solid #8b5cf655;font:800 11px 'Rajdhani';letter-spacing:.7px}
+.poi-marker{display:flex;align-items:center;gap:5px;max-width:190px;padding:4px 7px;background:rgba(18,17,25,.94);border:1px solid #a78bfa;border-radius:5px;color:#fff;box-shadow:0 2px 9px #000a;white-space:nowrap;cursor:pointer}
+.poi-marker-icon{font-size:15px;line-height:1}
+.poi-marker-name{overflow:hidden;text-overflow:ellipsis;font:800 10px 'Rajdhani';letter-spacing:.2px;max-width:145px}
 #poi-toggle,#nav-exit{width:100%;min-height:42px;padding:10px 13px;display:flex;align-items:center;justify-content:space-between;background:transparent;color:#fff;font:900 13px 'Rajdhani';letter-spacing:1.6px;text-align:left}
 #poi-content{padding:0 12px 12px}
 .poi-group{border-top:1px solid #ffffff22;padding:8px 0}
@@ -56,11 +62,20 @@ button{border:0;border-radius:2px;background:var(--lime);color:#151a10;font:900 
 .poi-options input{flex:0 0 auto;width:14px;height:14px;accent-color:#8b5cf6}
 #poi-status{font:600 10px 'Rajdhani';color:#aeb7a9;line-height:1.4}
 #nav-exit{position:absolute;right:8px;top:8px;width:auto;min-height:30px;border:1px solid #ffffff33;border-radius:5px;padding:4px 9px}
-body.nav-mode #poi-panel,body.nav-mode .search,body.nav-mode .top,body.nav-mode .bottom,body.nav-mode #message{display:none!important}
+body.nav-mode .search,body.nav-mode .top,body.nav-mode .bottom,body.nav-mode #message{display:none!important}
+body.nav-mode #poi-drawer-handle{display:block}
+body.nav-mode #poi-panel{display:block!important;position:fixed;top:0;left:0;right:auto;width:min(33.333vw,390px);min-width:275px;max-width:390px;height:100dvh;max-height:100dvh;overflow-y:auto;z-index:7;border-radius:0 12px 12px 0;border-left:0;border-right:2px solid #8b5cf6;background:rgba(10,13,18,.97);transform:translateX(-102%);transition:transform .28s ease;padding-bottom:20px}
+body.nav-mode #poi-panel.drawer-open{transform:translateX(0)}
+body.nav-mode #poi-panel #poi-toggle{min-height:56px;padding:15px;border-bottom:1px solid #ffffff25}
+body.nav-mode #poi-panel #poi-toggle span{display:none}
+body.nav-mode #nav-menu-actions{display:grid}
+body.nav-mode #poi-content{padding:8px 14px 20px}
+body.nav-mode #poi-panel .poi-options{grid-template-columns:1fr}
+body.nav-mode #poi-panel .poi-options label{font-size:14px;min-height:30px}
 body.nav-mode #nav-hud{display:block;position:absolute;top:18px;left:18px;width:min(360px,calc(100vw - 36px));border-left:4px solid #8b5cf6;border-radius:12px;padding:18px 16px 14px}
 body.nav-mode #nav-turn{font-size:26px;padding-right:65px}
 body.nav-mode #nav-sub{color:#b9a0ff}
-@media(max-width:600px){#poi-panel{top:127px;right:12px;width:min(260px,calc(100vw - 24px));max-height:45vh;overflow:auto}body.nav-mode #nav-hud{top:12px;left:12px;width:calc(100vw - 24px)}body.nav-mode #nav-turn{font-size:21px}}
+@media(max-width:600px){#poi-panel{top:127px;right:12px;width:min(260px,calc(100vw - 24px));max-height:45vh;overflow:auto}body.nav-mode #poi-panel{width:33.333vw;min-width:230px;max-width:330px;height:100dvh;max-height:100dvh;top:0;left:0;right:auto}body.nav-mode #nav-hud{top:12px;left:12px;width:calc(100vw - 24px)}body.nav-mode #nav-turn{font-size:21px}body.nav-mode #poi-drawer-handle{top:50%;width:38px;height:66px}}
 #results{display:none;position:absolute;top:145px;left:20px;width:min(390px,calc(100vw - 40px));max-height:42vh;overflow:auto;background:rgba(12,16,12,.96);border:1px solid var(--line);border-left:3px solid var(--lime);z-index:5;box-shadow:0 12px 35px #000b;backdrop-filter:blur(14px)}
 .result-item{display:block;width:100%;padding:11px 13px;text-align:left;background:transparent;color:#f5f5eb;border:0;border-bottom:1px solid #ffffff20;font:600 13px 'Rajdhani';letter-spacing:.3px;line-height:1.35}
 .result-item:hover{background:#8b5cf6;color:#111}
@@ -88,8 +103,15 @@ body.nav-mode #nav-sub{color:#b9a0ff}
  <button onclick="searchPlace()">CERCA</button>
 </div>
 <div id="results"></div>
+<button id="poi-drawer-handle" type="button" aria-label="Apri menu navigazione">☰</button>
 <aside id="poi-panel" class="panel">
- <button id="poi-toggle" type="button" aria-expanded="true">PUNTI DI INTERESSE <span>⌄</span></button>
+ <button id="poi-toggle" type="button" aria-expanded="true">MENU NAVIGAZIONE <span>⌄</span></button>
+ <div id="nav-menu-actions">
+  <button type="button" id="menu-gps">◎ CENTRA GPS</button>
+  <button type="button" id="menu-3d">3D / 2D</button>
+  <button type="button" id="menu-compass">↻ RICALIBRA BUSSOLA</button>
+  <button type="button" id="menu-end">■ TERMINA NAV.</button>
+ </div>
  <div id="poi-content">
   <div class="poi-group"><button class="poi-heading" type="button">RISTORAZIONE <span>−</span></button><div class="poi-options">
    <label><input type="checkbox" data-poi="restaurant"> Ristoranti</label><label><input type="checkbox" data-poi="fast_food"> Fast food</label><label><input type="checkbox" data-poi="cafe"> Bar e caffè</label>
@@ -420,6 +442,7 @@ async function toggleNavigation(){
   navigationActive=false;
   if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}
   document.body.classList.remove('nav-mode');
+  document.getElementById('poi-panel').classList.remove('drawer-open');document.getElementById('poi-drawer-handle').style.display='none';
   document.getElementById('nav-hud').classList.remove('visible');
   document.querySelector('.search').style.display='flex';
   previousGpsPosition=null;navCameraReady=false;lastCameraHeading=null;
@@ -435,6 +458,7 @@ async function toggleNavigation(){
  enableOrientationSensors();
  navigationActive=true;navCameraReady=false;previousGpsPosition=null;lastCameraHeading=null;lastOrientationUpdate=0;
  document.body.classList.add('nav-mode');
+ document.getElementById('poi-panel').classList.remove('drawer-open');document.getElementById('poi-drawer-handle').style.display='block';
  document.getElementById('nav-hud').classList.add('visible');
  document.querySelector('.search').style.display='none';
  button.disabled=false;button.classList.add('stop');button.textContent='■ TERMINA NAVIGAZIONE';
@@ -454,7 +478,12 @@ async function toggleNavigation(){
 document.getElementById('nav-exit').addEventListener('click',()=>{if(navigationActive)toggleNavigation();});
 function setupPoiControls(){
  const toggle=document.getElementById('poi-toggle'),content=document.getElementById('poi-content');
- toggle.addEventListener('click',()=>{const hidden=content.style.display==='none';content.style.display=hidden?'block':'none';toggle.setAttribute('aria-expanded',String(hidden));toggle.querySelector('span').textContent=hidden?'⌄':'⌃';});
+ toggle.addEventListener('click',()=>{if(document.body.classList.contains('nav-mode')){document.getElementById('poi-panel').classList.remove('drawer-open');document.getElementById('poi-drawer-handle').style.display='block';return;}const hidden=content.style.display==='none';content.style.display=hidden?'block':'none';toggle.setAttribute('aria-expanded',String(hidden));toggle.querySelector('span').textContent=hidden?'⌄':'⌃';});
+ document.getElementById('poi-drawer-handle').addEventListener('click',()=>{document.getElementById('poi-panel').classList.add('drawer-open');document.getElementById('poi-drawer-handle').style.display='none';});
+ document.getElementById('menu-gps').addEventListener('click',()=>{if(userPosition)map.flyTo({center:userPosition,zoom:17.2,pitch:68,duration:800});else locate();});
+ document.getElementById('menu-3d').addEventListener('click',()=>{is3D=!is3D;map.easeTo({pitch:is3D?68:0,duration:500});});
+ document.getElementById('menu-compass').addEventListener('click',()=>{orientationHeading=null;orientationAvailable=false;enableOrientationSensors();});
+ document.getElementById('menu-end').addEventListener('click',()=>{if(navigationActive)toggleNavigation();});
  document.querySelectorAll('.poi-heading').forEach(btn=>btn.addEventListener('click',()=>{const panel=btn.nextElementSibling;const hidden=panel.style.display==='none';panel.style.display=hidden?'grid':'none';btn.querySelector('span').textContent=hidden?'−':'+';}));
  document.querySelectorAll('[data-poi]').forEach(input=>input.addEventListener('change',loadSelectedPois));
 }
@@ -473,16 +502,20 @@ async function loadSelectedPois(){
   const data=await response.json();
   data.elements.slice(0,120).forEach(el=>{
    const lat=el.lat??el.center?.lat,lon=el.lon??el.center?.lon;if(!lat||!lon)return;
-   const name=el.tags?.name||el.tags?.['name:it']||'Punto di interesse';
+   const key=selected.find(k=>{const [tag,value]=poiTags[k];return el.tags?.[tag]===value;})||selected[0];
+   const name=el.tags?.name||el.tags?.['name:it']||({restaurant:'Ristorante',fast_food:'Fast food',cafe:'Bar e caffè',fuel:'Distributore',parking:'Parcheggio',pharmacy:'Farmacia',hospital:'Ospedale',supermarket:'Supermercato',cinema:'Cinema',beach:'Spiaggia'}[key]||'Punto di interesse');
+   const icons={restaurant:'🍽️',fast_food:'🍔',cafe:'☕',fuel:'⛽',parking:'🅿️',pharmacy:'✚',hospital:'✚',supermarket:'🛒',cinema:'🎬',beach:'🏖️'};
    const marker=document.createElement('div');marker.className='poi-marker';marker.title=name;
-   marker.textContent='●';marker.style.cssText='color:#8b5cf6;font-size:24px;text-shadow:0 1px 6px #000;cursor:pointer';
-   const popup=new maplibregl.Popup({offset:16}).setText(name);
-   poiMarkers.push(new maplibregl.Marker({element:marker}).setLngLat([lon,lat]).setPopup(popup).addTo(map));
+   const icon=document.createElement('span');icon.className='poi-marker-icon';icon.textContent=icons[key]||'●';
+   const label=document.createElement('span');label.className='poi-marker-name';label.textContent=name;
+   marker.append(icon,label);
+   const popup=new maplibregl.Popup({offset:18}).setText(name);
+   poiMarkers.push(new maplibregl.Marker({element:marker,anchor:'bottom'}).setLngLat([lon,lat]).setPopup(popup).addTo(map));
   });
   status.textContent=poiMarkers.length+' punti trovati entro 5 km.';
  }catch(e){status.textContent='Punti non disponibili al momento. Riprova tra poco.';}
 }
-map.on('moveend',()=>{if(document.querySelector('[data-poi]:checked'))loadSelectedPois();});
+// I punti selezionati restano sulla mappa durante la navigazione: niente richieste ripetute ad ogni movimento.
 document.getElementById('destination').addEventListener('keydown',e=>{if(e.key==='Enter')searchPlace()});
 document.addEventListener('click',e=>{if(!e.target.closest('.search')&&!e.target.closest('#results'))document.getElementById('results').style.display='none'});
 </script>
