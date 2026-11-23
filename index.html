@@ -76,6 +76,25 @@ body.nav-mode #nav-hud{display:block;position:absolute;top:18px;left:18px;width:
 body.nav-mode #nav-turn{font-size:26px;padding-right:65px}
 body.nav-mode #nav-sub{color:#ff9fc1}
 @media(max-width:600px){#poi-panel{top:127px;right:12px;width:min(260px,calc(100vw - 24px));max-height:45vh;overflow:auto}body.nav-mode #poi-panel{width:33.333vw;min-width:230px;max-width:330px;height:100dvh;max-height:100dvh;top:0;left:0;right:auto}body.nav-mode #nav-hud{top:12px;left:12px;width:calc(100vw - 24px)}body.nav-mode #nav-turn{font-size:21px}body.nav-mode #poi-drawer-handle{top:50%;width:38px;height:66px}}
+
+/* Unico menu laterale per esplorazione e navigazione */
+#poi-drawer-handle{display:block;position:fixed;top:45%;left:0;z-index:20}
+#poi-panel{position:fixed!important;top:0!important;left:0!important;right:auto!important;width:min(33.333vw,390px)!important;min-width:275px;max-width:390px;height:100dvh!important;max-height:100dvh!important;overflow-y:auto!important;z-index:19!important;margin:0;border:0!important;border-right:2px solid #ff4f91!important;border-radius:0 12px 12px 0!important;background:rgba(10,13,18,.97)!important;padding-bottom:22px;transform:translateX(-102%);transition:transform .28s ease}
+#poi-panel.drawer-open{transform:translateX(0)}
+#poi-panel #poi-toggle{min-height:56px;padding:15px;border-bottom:1px solid #ffffff25}
+#poi-panel #poi-toggle span{display:inline!important;font-size:20px}
+#menu-main-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;border-bottom:1px solid #ffffff25}
+#menu-main-tabs .menu-tab{min-height:43px;background:#25232d;color:#eee;border:1px solid #ffffff30;border-radius:5px;font:900 13px 'Rajdhani';letter-spacing:1px}
+#menu-main-tabs .menu-tab.active{background:#ff4f91;color:#211019;border-color:#ff4f91}
+#nav-menu-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px}
+#nav-menu-actions .menu-section-title,.menu-hint{grid-column:1/-1}
+.menu-section-title{font:900 11px 'Rajdhani';letter-spacing:1.5px;color:#ff9fc1;padding:4px 0}
+.menu-hint{font:600 11px/1.5 'Rajdhani';color:#b9b9c5;margin:6px 0}
+#poi-content{padding:12px 14px 20px!important}
+#poi-panel .poi-options{grid-template-columns:1fr!important}
+#poi-panel .poi-options label{font-size:14px;min-height:32px}
+@media(max-width:600px){#poi-panel{width:min(82vw,330px)!important;min-width:230px}#poi-drawer-handle{top:50%;width:38px;height:66px}}
+
 #results{display:none;position:absolute;top:145px;left:20px;width:min(390px,calc(100vw - 40px));max-height:42vh;overflow:auto;background:rgba(12,16,12,.96);border:1px solid var(--line);border-left:3px solid var(--lime);z-index:5;box-shadow:0 12px 35px #000b;backdrop-filter:blur(14px)}
 .result-item{display:block;width:100%;padding:11px 13px;text-align:left;background:transparent;color:#f5f5eb;border:0;border-bottom:1px solid #ffffff20;font:600 13px 'Rajdhani';letter-spacing:.3px;line-height:1.35}
 .result-item:hover{background:#ff4f91;color:#111}
@@ -103,17 +122,16 @@ body.nav-mode #nav-sub{color:#ff9fc1}
  <button onclick="searchPlace()">CERCA</button>
 </div>
 <div id="results"></div>
-<button id="poi-drawer-handle" type="button" aria-label="Apri menu navigazione">☰</button>
+<button id="poi-drawer-handle" type="button" aria-label="Apri menu">☰</button>
 <aside id="poi-panel" class="panel">
- <button id="poi-toggle" type="button" aria-expanded="true">MENU NAVIGAZIONE <span>⌄</span></button>
- <div id="nav-menu-actions">
-  <button type="button" id="menu-gps">◎ CENTRA GPS</button>
-  <button type="button" id="menu-3d">3D / 2D</button>
-  <button type="button" id="menu-compass">↻ RICALIBRA BUSSOLA</button>
-  <button type="button" id="menu-end">■ TERMINA NAV.</button>
- </div>
- <div id="poi-content">
-  <div class="poi-group"><button class="poi-heading" type="button">RISTORAZIONE <span>−</span></button><div class="poi-options">
+ <button id="poi-toggle" type="button" aria-expanded="false">MENU <span>×</span></button>
+ <div id="menu-main-tabs"><button type="button" id="tab-navigation" class="menu-tab active">NAVIGAZIONE</button><button type="button" id="tab-interests" class="menu-tab">INTERESSI</button></div>
+ <div id="nav-menu-actions"><div class="menu-section-title">CONTROLLI NAVIGAZIONE</div>
+  <button type="button" id="menu-gps">◎ CENTRA GPS</button><button type="button" id="menu-3d">3D / 2D</button>
+  <button type="button" id="menu-compass">↻ RICALIBRA BUSSOLA</button><button type="button" id="menu-end">■ TERMINA NAV.</button>
+  <p class="menu-hint">Cerca una destinazione e premi AVVIA NAVIGAZIONE per iniziare il percorso.</p></div>
+ <div id="poi-content" style="display:none"><div class="menu-section-title">SELEZIONA I PUNTI DI INTERESSE</div>
+ <div class="poi-group"><button class="poi-heading" type="button">RISTORAZIONE <span>−</span></button><div class="poi-options">
    <label><input type="checkbox" data-poi="restaurant"> Ristoranti</label><label><input type="checkbox" data-poi="fast_food"> Fast food</label><label><input type="checkbox" data-poi="cafe"> Bar e caffè</label>
   </div></div>
   <div class="poi-group"><button class="poi-heading" type="button">SERVIZI <span>−</span></button><div class="poi-options">
@@ -477,9 +495,15 @@ async function toggleNavigation(){
 }
 document.getElementById('nav-exit').addEventListener('click',()=>{if(navigationActive)toggleNavigation();});
 function setupPoiControls(){
- const toggle=document.getElementById('poi-toggle'),content=document.getElementById('poi-content');
- toggle.addEventListener('click',()=>{if(document.body.classList.contains('nav-mode')){document.getElementById('poi-panel').classList.remove('drawer-open');document.getElementById('poi-drawer-handle').style.display='block';return;}const hidden=content.style.display==='none';content.style.display=hidden?'block':'none';toggle.setAttribute('aria-expanded',String(hidden));toggle.querySelector('span').textContent=hidden?'⌄':'⌃';});
- document.getElementById('poi-drawer-handle').addEventListener('click',()=>{document.getElementById('poi-panel').classList.add('drawer-open');document.getElementById('poi-drawer-handle').style.display='none';});
+ const panel=document.getElementById('poi-panel'),handle=document.getElementById('poi-drawer-handle'),toggle=document.getElementById('poi-toggle');
+ const actions=document.getElementById('nav-menu-actions'),content=document.getElementById('poi-content');
+ const closeDrawer=()=>{panel.classList.remove('drawer-open');handle.style.display='block';toggle.setAttribute('aria-expanded','false');toggle.querySelector('span').textContent='☰';};
+ const openDrawer=()=>{panel.classList.add('drawer-open');handle.style.display='none';toggle.setAttribute('aria-expanded','true');toggle.querySelector('span').textContent='×';};
+ handle.style.display='block';
+ handle.addEventListener('click',()=>panel.classList.contains('drawer-open')?closeDrawer():openDrawer());
+ toggle.addEventListener('click',closeDrawer);
+ document.getElementById('tab-navigation').addEventListener('click',()=>{actions.style.display='grid';content.style.display='none';document.getElementById('tab-navigation').classList.add('active');document.getElementById('tab-interests').classList.remove('active');});
+ document.getElementById('tab-interests').addEventListener('click',()=>{actions.style.display='none';content.style.display='block';document.getElementById('tab-interests').classList.add('active');document.getElementById('tab-navigation').classList.remove('active');});
  document.getElementById('menu-gps').addEventListener('click',()=>{if(userPosition)map.flyTo({center:userPosition,zoom:17.2,pitch:68,duration:800});else locate();});
  document.getElementById('menu-3d').addEventListener('click',()=>{is3D=!is3D;map.easeTo({pitch:is3D?68:0,duration:500});});
  document.getElementById('menu-compass').addEventListener('click',()=>{orientationHeading=null;orientationAvailable=false;enableOrientationSensors();});
