@@ -8,7 +8,7 @@
 <script src="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=Rajdhani:wght@500;600;700&display=swap');
-:root{--lime:#ff4fa3;--panel:rgba(15,19,15,.9);--line:rgba(224,239,211,.22)}
+:root{--lime:#8b5cf6;--panel:rgba(15,19,15,.9);--line:rgba(224,239,211,.22)}
 *{box-sizing:border-box}
 body{margin:0;background:#090d12;color:#f5f5eb;font-family:'Rajdhani',sans-serif;overflow:hidden}
 #map{position:absolute;inset:0}
@@ -51,17 +51,17 @@ button{border:0;border-radius:2px;background:var(--lime);color:#151a10;font:900 
 .poi-heading{width:100%;padding:3px 0;background:transparent;color:var(--lime);text-align:left;display:flex;justify-content:space-between;font:800 11px 'Rajdhani';letter-spacing:1.3px}
 .poi-options{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding-top:8px}
 .poi-options label{display:flex;align-items:center;gap:6px;font:600 12px 'Rajdhani';color:#e9e9df}
-.poi-options input{flex:0 0 auto;width:14px;height:14px;accent-color:#ff4fa3}
+.poi-options input{flex:0 0 auto;width:14px;height:14px;accent-color:#8b5cf6}
 #poi-status{font:600 10px 'Rajdhani';color:#aeb7a9;line-height:1.4}
 #nav-exit{position:absolute;right:8px;top:8px;width:auto;min-height:30px;border:1px solid #ffffff33;border-radius:5px;padding:4px 9px}
 body.nav-mode #poi-panel,body.nav-mode .search,body.nav-mode .top,body.nav-mode .bottom,body.nav-mode #message{display:none!important}
-body.nav-mode #nav-hud{display:block;position:absolute;top:18px;left:18px;width:min(360px,calc(100vw - 36px));border-left:4px solid #ff4fa3;border-radius:12px;padding:18px 16px 14px}
+body.nav-mode #nav-hud{display:block;position:absolute;top:18px;left:18px;width:min(360px,calc(100vw - 36px));border-left:4px solid #8b5cf6;border-radius:12px;padding:18px 16px 14px}
 body.nav-mode #nav-turn{font-size:26px;padding-right:65px}
-body.nav-mode #nav-sub{color:#ff83bd}
+body.nav-mode #nav-sub{color:#b9a0ff}
 @media(max-width:600px){#poi-panel{top:127px;right:12px;width:min(260px,calc(100vw - 24px));max-height:45vh;overflow:auto}body.nav-mode #nav-hud{top:12px;left:12px;width:calc(100vw - 24px)}body.nav-mode #nav-turn{font-size:21px}}
 #results{display:none;position:absolute;top:145px;left:20px;width:min(390px,calc(100vw - 40px));max-height:42vh;overflow:auto;background:rgba(12,16,12,.96);border:1px solid var(--line);border-left:3px solid var(--lime);z-index:5;box-shadow:0 12px 35px #000b;backdrop-filter:blur(14px)}
 .result-item{display:block;width:100%;padding:11px 13px;text-align:left;background:transparent;color:#f5f5eb;border:0;border-bottom:1px solid #ffffff20;font:600 13px 'Rajdhani';letter-spacing:.3px;line-height:1.35}
-.result-item:hover{background:#ff4fa3;color:#111}
+.result-item:hover{background:#8b5cf6;color:#111}
 @media(max-width:600px){
  #results{top:127px;left:12px;width:calc(100vw - 24px)}
  .top{top:12px;left:12px;right:12px}.logo{font-size:29px}.logo span{font-size:10px;letter-spacing:3px;margin-top:6px}
@@ -436,7 +436,7 @@ async function loadSelectedPois(){
    const lat=el.lat??el.center?.lat,lon=el.lon??el.center?.lon;if(!lat||!lon)return;
    const name=el.tags?.name||el.tags?.['name:it']||'Punto di interesse';
    const marker=document.createElement('div');marker.className='poi-marker';marker.title=name;
-   marker.textContent='●';marker.style.cssText='color:#ff4fa3;font-size:24px;text-shadow:0 1px 6px #000;cursor:pointer';
+   marker.textContent='●';marker.style.cssText='color:#8b5cf6;font-size:24px;text-shadow:0 1px 6px #000;cursor:pointer';
    const popup=new maplibregl.Popup({offset:16}).setText(name);
    poiMarkers.push(new maplibregl.Marker({element:marker}).setLngLat([lon,lat]).setPopup(popup).addTo(map));
   });
