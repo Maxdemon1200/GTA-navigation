@@ -43,7 +43,7 @@ button{border:0;border-radius:2px;background:var(--lime);color:#151a10;font:900 
 #nav-hud.visible{display:block}
 #nav-turn{font:900 22px/1.1 'Barlow Condensed';letter-spacing:1px;color:#fff}
 #nav-sub{font:700 11px 'Rajdhani';letter-spacing:1.5px;color:var(--lime);margin-top:5px}
-#nav-stats{display:flex;gap:22px;margin-top:12px;padding-top:9px;border-top:1px solid #ffffff25;font:700 10px 'Rajdhani';letter-spacing:1.2px;color:#bfc8b9}
+#nav-stats{display:flex;gap:22px;margin-top:12px;padding-top:9px;border-top:1px solid #ffffff25;font:700 10px 'Rajdhani';letter-spacing:1.2px;color:#bfc8b9}#compass-status{margin-top:9px;font:700 10px 'Rajdhani';letter-spacing:1.2px;color:#c7b4ff}#compass-enable{margin-top:9px;padding:8px 11px;background:#8b5cf6;color:#130d20;font:900 11px 'Rajdhani';letter-spacing:1.2px;border-radius:4px}
 #nav-stats span{display:flex;flex-direction:column;gap:3px}#nav-stats b{font:800 17px 'Barlow Condensed';color:#fff;letter-spacing:.5px}
 @media(max-width:600px){#nav-hud{top:68px;left:12px;width:calc(100vw - 24px);padding:10px 12px}#nav-turn{font-size:19px}}
 #poi-panel{position:absolute;top:145px;right:20px;width:270px;z-index:3;padding:0;overflow:hidden;border-left:3px solid var(--lime)}
@@ -103,7 +103,7 @@ body.nav-mode #nav-sub{color:#b9a0ff}
   <div id="poi-status">Seleziona una categoria per mostrare i punti sulla mappa.</div>
  </div>
 </aside>
-<div id="nav-hud"><button id="nav-exit" type="button" title="Torna alla mappa">MAPPA</button><div class="info">PROSSIMA MANOVRA</div><div id="nav-turn">PROSEGUI DRITTO</div><div id="nav-sub">-- m</div><div id="nav-stats"><span>VELOCITÀ <b id="nav-speed">0 km/h</b></span><span>ARRIVO <b id="nav-eta">--:--</b></span></div></div>
+<div id="nav-hud"><button id="nav-exit" type="button" title="Torna alla mappa">MAPPA</button><div class="info">PROSSIMA MANOVRA</div><div id="nav-turn">PROSEGUI DRITTO</div><div id="nav-sub">-- m</div><div id="nav-stats"><span>VELOCITÀ <b id="nav-speed">0 km/h</b></span><span>ARRIVO <b id="nav-eta">--:--</b></span></div><div id="compass-status">BUSSOLA: IN ATTESA</div><button id="compass-enable" type="button">ATTIVA / RICALIBRA BUSSOLA</button></div>
 <div id="message">◆ ESPLORAZIONE LIBERA · MAPPA PRONTA</div>
 <div class="bottom">
  <div class="panel">
@@ -145,6 +145,45 @@ let lastRerouteAt=0;
 let poiMarkers=[];
 const poiTags={restaurant:['amenity','restaurant'],fast_food:['amenity','fast_food'],cafe:['amenity','cafe'],fuel:['amenity','fuel'],parking:['amenity','parking'],pharmacy:['amenity','pharmacy'],hospital:['amenity','hospital'],supermarket:['shop','supermarket'],cinema:['amenity','cinema'],beach:['natural','beach']};
 let navCameraReady=false;
+let orientationListening=false,orientationAvailable=false,orientationHeading=null,lastCameraHeading=null,lastOrientationUpdate=0,lastGpsCourse=null;
+function setCompassStatus(message){const el=document.getElementById('compass-status');if(el)el.textContent='BUSSOLA: '+message;}
+function normalizeHeading(value){return ((value%360)+360)%360;}
+function smoothHeading(previous,next){if(previous===null)return next;const delta=((next-previous+540)%360)-180;return normalizeHeading(previous+delta*0.22);}
+function onDeviceOrientation(event){
+ let heading=null;
+ if(typeof event.webkitCompassHeading==='number'&&Number.isFinite(event.webkitCompassHeading))heading=event.webkitCompassHeading;
+ else if(typeof event.alpha==='number'&&Number.isFinite(event.alpha)){
+  const screenAngle=(screen.orientation&&typeof screen.orientation.angle==='number')?screen.orientation.angle:((typeof window.orientation==='number')?window.orientation:0);
+  heading=normalizeHeading(360-event.alpha+screenAngle);
+ }
+ if(heading===null)return;
+ orientationHeading=smoothHeading(orientationHeading,normalizeHeading(heading));orientationAvailable=true;
+ setCompassStatus('ATTIVA · '+Math.round(orientationHeading)+'°');applyNavigationHeading(orientationHeading);
+}
+function applyNavigationHeading(heading){
+ if(!navigationActive||!Number.isFinite(heading))return;
+ const now=Date.now();if(now-lastOrientationUpdate<110)return;lastOrientationUpdate=now;
+ const h=normalizeHeading(heading);if(lastCameraHeading!==null&&Math.abs(((h-lastCameraHeading+540)%360)-180)<1.5)return;
+ lastCameraHeading=h;map.easeTo({bearing:h,pitch:68,duration:180,essential:true});
+}
+function attachOrientationListeners(){
+ if(orientationListening)return;orientationListening=true;
+ window.addEventListener('deviceorientationabsolute',onDeviceOrientation,true);
+ window.addEventListener('deviceorientation',onDeviceOrientation,true);
+ setCompassStatus('IN ATTESA DEL SENSORE...');
+ setTimeout(()=>{if(!orientationAvailable)setCompassStatus('SENSORE NON DISPONIBILE · USO DIREZIONE GPS');},5000);
+}
+function enableOrientationSensors(){
+ if(!('DeviceOrientationEvent' in window)){setCompassStatus('NON SUPPORTATA · USO DIREZIONE GPS');return;}
+ const request=window.DeviceOrientationEvent.requestPermission;
+ if(typeof request==='function'){
+  request.call(window.DeviceOrientationEvent).then(state=>{
+   if(state!=='granted'){setCompassStatus('PERMESSO NEGATO · USO DIREZIONE GPS');return;}
+   attachOrientationListeners();
+  }).catch(()=>setCompassStatus('PERMESSO NON CONCESSO · USO DIREZIONE GPS'));
+ }else attachOrientationListeners();
+}
+document.getElementById('compass-enable').addEventListener('click',()=>{orientationHeading=null;orientationAvailable=false;enableOrientationSensors();});
 
 function applyGtaSixMapPalette(){
  const layers=map.getStyle().layers||[];
@@ -219,7 +258,7 @@ function tilt(){
  is3D=!is3D;
  map.easeTo({pitch:is3D?60:0,duration:700});
 }
-function resetView(){map.easeTo({bearing:0,pitch:is3D?60:0,duration:700})}
+function resetView(){map.easeTo({bearing:0,pitch:is3D?60:0,duration:700});lastCameraHeading=0;}
 
 async function searchPlace(){
  const q=document.getElementById('destination').value.trim();
@@ -345,9 +384,11 @@ function updateNavigationProgress(pos){
   document.getElementById('nav-sub').textContent='PERCORSO COMPLETATO';
  }
  if(previousGpsPosition&&metersBetween(previousGpsPosition,pos)>2){
-  const bearing=routeBearing(previousGpsPosition,pos);
-  map.easeTo({center:pos,zoom:17.2,pitch:68,bearing,duration:850,essential:true});
+  const gpsBearing=routeBearing(previousGpsPosition,pos);lastGpsCourse=gpsBearing;
+  if(!orientationAvailable){map.easeTo({center:pos,zoom:17.2,pitch:68,bearing:gpsBearing,duration:650,essential:true});lastCameraHeading=gpsBearing;setCompassStatus('DIREZIONE GPS · '+Math.round(gpsBearing)+'°');}
+  else map.easeTo({center:pos,zoom:17.2,pitch:68,duration:500,essential:true});
  }else if(!navCameraReady){map.easeTo({center:pos,zoom:17.2,pitch:68,duration:1000});navCameraReady=true;}
+ if(orientationAvailable&&orientationHeading!==null)applyNavigationHeading(orientationHeading);
  previousGpsPosition=pos;
  if(nearest.distance>85&&Date.now()-lastRerouteAt>20000){lastRerouteAt=Date.now();recalculateRoute(pos);}
 }
@@ -381,7 +422,7 @@ async function toggleNavigation(){
   document.body.classList.remove('nav-mode');
   document.getElementById('nav-hud').classList.remove('visible');
   document.querySelector('.search').style.display='flex';
-  previousGpsPosition=null;navCameraReady=false;
+  previousGpsPosition=null;navCameraReady=false;lastCameraHeading=null;
   button.classList.remove('stop');button.disabled=false;button.textContent='▶ AVVIA NAVIGAZIONE';
   document.getElementById('status').textContent='PERCORSO PRONTO';
   document.getElementById('message').textContent='NAVIGAZIONE TERMINATA · IL PERCORSO RESTA VISIBILE';
@@ -391,7 +432,8 @@ async function toggleNavigation(){
   document.getElementById('message').textContent='PRIMA CERCA UNA DESTINAZIONE E ATTENDI IL CALCOLO DEL PERCORSO';
   return;
  }
- navigationActive=true;navCameraReady=false;previousGpsPosition=null;
+ enableOrientationSensors();
+ navigationActive=true;navCameraReady=false;previousGpsPosition=null;lastCameraHeading=null;lastOrientationUpdate=0;
  document.body.classList.add('nav-mode');
  document.getElementById('nav-hud').classList.add('visible');
  document.querySelector('.search').style.display='none';
