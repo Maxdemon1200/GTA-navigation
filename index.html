@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GTA Navigation</title>
+<link href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#090d12;color:white;font-family:Arial,sans-serif;overflow:hidden}
+#map{position:absolute;inset:0}
+.top{position:absolute;top:15px;left:15px;right:15px;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
+.logo{font-size:19px;font-weight:900;letter-spacing:2px;text-shadow:0 2px 8px #000}
+.logo span{color:#a8e638}
+.panel{background:#101820eF;border:1px solid #52616b;border-radius:12px;padding:12px;box-shadow:0 5px 20px #0008}
+.search{position:absolute;top:65px;left:15px;right:15px;display:flex;gap:7px}
+input{flex:1;min-width:0;background:#101820;color:white;border:1px solid #64727b;border-radius:8px;padding:13px;font-size:15px;outline:none}
+button{border:0;border-radius:8px;background:#a8e638;color:#101609;font-weight:bold;padding:12px;cursor:pointer}
+.bottom{position:absolute;bottom:18px;left:15px;right:15px;display:flex;justify-content:space-between;align-items:end;gap:10px}
+.info{font-size:12px;color:#b9c5cc}
+.big{font-size:25px;font-weight:900;margin-top:4px}
+.controls{display:flex;flex-direction:column;gap:8px}
+.controls button{min-width:48px;background:#101820;color:white;border:1px solid #64727b;font-size:18px}
+#message{position:absolute;top:125px;left:15px;right:15px;text-align:center;font-size:12px;color:white;text-shadow:0 2px 5px black;pointer-events:none}
+@media(min-width:700px){.search{right:auto;width:420px}.bottom{right:auto;width:420px}.top{right:25px;left:25px}}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="top">
+ <div class="logo">GTA <span>NAVIGATION</span></div>
+ <div class="panel info" id="gps">GPS: IN ATTESA</div>
+</div>
+<div class="search">
+ <input id="destination" placeholder="Cerca una destinazione...">
+ <button onclick="searchPlace()">CERCA</button>
+</div>
+<div id="message">ESPLORA LA MAPPA · TOCCA GPS PER LOCALIZZARTI</div>
+<div class="bottom">
+ <div class="panel">
+  <div class="info">STATO NAVIGAZIONE</div>
+  <div class="big" id="status">FREE ROAM</div>
+  <div class="info" id="distance">Nessun percorso attivo</div>
+ </div>
+ <div class="controls">
+  <button onclick="locate()" title="GPS">◎</button>
+  <button onclick="tilt()" title="Vista 3D">3D</button>
+  <button onclick="resetView()" title="Bussola">N</button>
+ </div>
+</div>
+<script>
+const map=new maplibregl.Map({
+ container:'map',
+ style:'https://tiles.openfreemap.org/styles/dark',
+ center:[8.56,40.56],
+ zoom:13,
+ pitch:58,
+ bearing:-15,
+ antialias:true
+});
+map.addControl(new maplibregl.NavigationControl({showCompass:false}),'bottom-right');
+let userMarker=null;
+let routeLayer=false;
+let is3D=true;
+let userPosition=null;
+
+map.on('load',()=>{
+ document.getElementById('message').textContent='MAPPA PRONTA · GTA NAVIGATION';
+ const layers=map.getStyle().layers;
+ const labelLayer=layers.find(l=>l.type==='symbol' && l.layout && l.layout['text-field']);
+ if(labelLayer){
+  map.addLayer({
+   id:'3d-buildings',
+   source:'openmaptiles',
+   'source-layer':'building',
+   type:'fill-extrusion',
+   minzoom:13,
+   paint:{
+    'fill-extrusion-color':'#59636b',
+    'fill-extrusion-height':['coalesce',['get','render_height'],8],
+    'fill-extrusion-base':['coalesce',['get','render_min_height'],0],
+    'fill-extrusion-opacity':0.75
+   }
+  },labelLayer.id);
+ }
+});
+
+function locate(){
+ if(!navigator.geolocation){alert('GPS non disponibile');return}
+ document.getElementById('gps').textContent='GPS: RICERCA...';
+ navigator.geolocation.getCurrentPosition(pos=>{
+  userPosition=[pos.coords.longitude,pos.coords.latitude];
+  if(userMarker)userMarker.remove();
+  userMarker=new maplibregl.Marker({color:'#a8e638'}).setLngLat(userPosition).addTo(map);
+  map.flyTo({center:userPosition,zoom:16,pitch:65});
+  document.getElementById('gps').textContent='GPS: ATTIVO';
+  document.getElementById('message').textContent='POSIZIONE RILEVATA';
+ },()=>{document.getElementById('gps').textContent='GPS: NON DISPONIBILE';alert('Impossibile ottenere la posizione. Controlla i permessi GPS.')},{enableHighAccuracy:true,timeout:12000});
+}
+
+function tilt(){
+ is3D=!is3D;
+ map.easeTo({pitch:is3D?60:0,duration:700});
+}
+function resetView(){map.easeTo({bearing:0,pitch:is3D?60:0,duration:700})}
+
+async function searchPlace(){
+ const q=document.getElementById('destination').value.trim();
+ if(!q)return;
+ document.getElementById('message').textContent='RICERCA DESTINAZIONE...';
+ try{
+  const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(q));
+  const data=await r.json();
+  if(!data.length){document.getElementById('message').textContent='DESTINAZIONE NON TROVATA';return}
+  const p=[Number(data[0].lon),Number(data[0].lat)];
+  new maplibregl.Marker({color:'#ffbd38'}).setLngLat(p).addTo(map);
+  map.flyTo({center:p,zoom:16,pitch:60});
+  document.getElementById('status').textContent='DESTINAZIONE';
+  document.getElementById('distance').textContent=data[0].display_name;
+  document.getElementById('message').textContent='DESTINAZIONE TROVATA';
+ }catch(e){document.getElementById('message').textContent='ERRORE DI CONNESSIONE'}
+}
+document.getElementById('destination').addEventListener('keydown',e=>{if(e.key==='Enter')searchPlace()});
+</script>
+</body>
+</html>
