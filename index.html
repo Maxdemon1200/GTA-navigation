@@ -137,8 +137,11 @@ body.nav-mode #nav-sub{color:#ff9fc1}
   <div class="poi-group"><button class="poi-heading" type="button">SERVIZI <span>−</span></button><div class="poi-options">
    <label><input type="checkbox" data-poi="fuel"> Benzinai</label><label><input type="checkbox" data-poi="parking"> Parcheggi</label><label><input type="checkbox" data-poi="pharmacy"> Farmacie</label><label><input type="checkbox" data-poi="hospital"> Ospedali</label>
   </div></div>
-  <div class="poi-group"><button class="poi-heading" type="button">NEGOZI E TEMPO LIBERO <span>−</span></button><div class="poi-options">
-   <label><input type="checkbox" data-poi="supermarket"> Supermercati</label><label><input type="checkbox" data-poi="cinema"> Cinema</label><label><input type="checkbox" data-poi="beach"> Spiagge</label>
+  <div class="poi-group"><button class="poi-heading" type="button">LUOGHI E CULTURA <span>−</span></button><div class="poi-options">
+   <label><input type="checkbox" data-poi="monument"> Monumenti</label><label><input type="checkbox" data-poi="museum"> Musei</label><label><input type="checkbox" data-poi="cinema"> Cinema</label><label><input type="checkbox" data-poi="beach"> Spiagge</label>
+  </div></div>
+  <div class="poi-group"><button class="poi-heading" type="button">NEGOZI <span>−</span></button><div class="poi-options">
+   <label><input type="checkbox" data-poi="supermarket"> Supermercati</label><label><input type="checkbox" data-poi="atm"> Bancomat</label>
   </div></div>
   <div id="poi-status">Seleziona una categoria per mostrare i punti sulla mappa.</div>
  </div>
@@ -183,7 +186,7 @@ let routeCum=[];
 let previousGpsPosition=null;
 let lastRerouteAt=0;
 let poiMarkers=[];
-const poiTags={restaurant:['amenity','restaurant'],fast_food:['amenity','fast_food'],cafe:['amenity','cafe'],fuel:['amenity','fuel'],parking:['amenity','parking'],pharmacy:['amenity','pharmacy'],hospital:['amenity','hospital'],supermarket:['shop','supermarket'],cinema:['amenity','cinema'],beach:['natural','beach']};
+const poiTags={restaurant:['amenity','restaurant'],fast_food:['amenity','fast_food'],cafe:['amenity','cafe'],fuel:['amenity','fuel'],parking:['amenity','parking'],pharmacy:['amenity','pharmacy'],hospital:['amenity','hospital'],supermarket:['shop','supermarket'],cinema:['amenity','cinema'],beach:['natural','beach'],monument:['historic','monument'],museum:['tourism','museum'],atm:['amenity','atm']};
 let navCameraReady=false;
 let orientationListening=false,orientationAvailable=false,orientationHeading=null,lastCameraHeading=null,lastOrientationUpdate=0,lastGpsCourse=null;
 function setCompassStatus(message){const el=document.getElementById('compass-status');if(el)el.textContent='BUSSOLA: '+message;}
@@ -527,8 +530,8 @@ async function loadSelectedPois(){
   data.elements.slice(0,120).forEach(el=>{
    const lat=el.lat??el.center?.lat,lon=el.lon??el.center?.lon;if(!lat||!lon)return;
    const key=selected.find(k=>{const [tag,value]=poiTags[k];return el.tags?.[tag]===value;})||selected[0];
-   const name=el.tags?.name||el.tags?.['name:it']||({restaurant:'Ristorante',fast_food:'Fast food',cafe:'Bar e caffè',fuel:'Distributore',parking:'Parcheggio',pharmacy:'Farmacia',hospital:'Ospedale',supermarket:'Supermercato',cinema:'Cinema',beach:'Spiaggia'}[key]||'Punto di interesse');
-   const icons={restaurant:'🍽️',fast_food:'🍔',cafe:'☕',fuel:'⛽',parking:'🅿️',pharmacy:'✚',hospital:'✚',supermarket:'🛒',cinema:'🎬',beach:'🏖️'};
+   const name=el.tags?.name||el.tags?.['name:it']||({restaurant:'Ristorante',fast_food:'Fast food',cafe:'Bar e caffè',fuel:'Distributore',parking:'Parcheggio',pharmacy:'Farmacia',hospital:'Ospedale',supermarket:'Supermercato',cinema:'Cinema',beach:'Spiaggia',monument:'Monumento',museum:'Museo',atm:'Bancomat'}[key]||'Punto di interesse');
+   const icons={restaurant:'🍽️',fast_food:'🍔',cafe:'☕',fuel:'⛽',parking:'🅿️',pharmacy:'✚',hospital:'✚',supermarket:'🛒',cinema:'🎬',beach:'🏖️',monument:'🏛️',museum:'🏛️',atm:'🏧'};
    const marker=document.createElement('div');marker.className='poi-marker';marker.title=name;
    const icon=document.createElement('span');icon.className='poi-marker-icon';icon.textContent=icons[key]||'●';
    const label=document.createElement('span');label.className='poi-marker-name';label.textContent=name;
