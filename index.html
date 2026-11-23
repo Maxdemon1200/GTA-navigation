@@ -519,28 +519,51 @@ async function loadSelectedPois(){
  const status=document.getElementById('poi-status');
  poiMarkers.forEach(m=>m.remove());poiMarkers=[];
  if(!selected.length){status.textContent='Nessuna categoria selezionata.';return;}
- status.textContent='Caricamento punti di interesse...';
- const c=map.getCenter(),radius=5000;
- const clauses=selected.map(k=>{const [key,val]=poiTags[k];return 'node(around:'+radius+','+c.lat+','+c.lng+')['+key+'="'+val+'"];way(around:'+radius+','+c.lat+','+c.lng+')['+key+'="'+val+'"];';}).join('');
- const query='[out:json][timeout:20];('+clauses+');out center tags;';
- try{
-  const response=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'data='+encodeURIComponent(query)});
-  if(!response.ok)throw new Error('overpass');
-  const data=await response.json();
-  data.elements.slice(0,120).forEach(el=>{
-   const lat=el.lat??el.center?.lat,lon=el.lon??el.center?.lon;if(!lat||!lon)return;
-   const key=selected.find(k=>{const [tag,value]=poiTags[k];return el.tags?.[tag]===value;})||selected[0];
-   const name=el.tags?.name||el.tags?.['name:it']||({restaurant:'Ristorante',fast_food:'Fast food',cafe:'Bar e caffè',fuel:'Distributore',parking:'Parcheggio',pharmacy:'Farmacia',hospital:'Ospedale',supermarket:'Supermercato',cinema:'Cinema',beach:'Spiaggia',monument:'Monumento',museum:'Museo',atm:'Bancomat'}[key]||'Punto di interesse');
-   const icons={restaurant:'🍽️',fast_food:'🍔',cafe:'☕',fuel:'⛽',parking:'🅿️',pharmacy:'✚',hospital:'✚',supermarket:'🛒',cinema:'🎬',beach:'🏖️',monument:'🏛️',museum:'🏛️',atm:'🏧'};
-   const marker=document.createElement('div');marker.className='poi-marker';marker.title=name;
-   const icon=document.createElement('span');icon.className='poi-marker-icon';icon.textContent=icons[key]||'●';
-   const label=document.createElement('span');label.className='poi-marker-name';label.textContent=name;
-   marker.append(icon,label);
-   const popup=new maplibregl.Popup({offset:18}).setText(name);
-   poiMarkers.push(new maplibregl.Marker({element:marker,anchor:'bottom'}).setLngLat([lon,lat]).setPopup(popup).addTo(map));
-  });
-  status.textContent=poiMarkers.length+' punti trovati entro 5 km.';
- }catch(e){status.textContent='Punti non disponibili al momento. Riprova tra poco.';}
+ status.textContent='Ricerca punti di interesse...';
+ const c=map.getCenter(),radius=7000;
+ const clauses=selected.map(k=>{
+  const tag=poiTags[k];if(!tag)return '';
+  const [key,val]=tag;
+  return 'nwr(around:'+radius+','+c.lat+','+c.lng+')['+key+'="'+val+'"];';
+ }).join('');
+ const query='[out:json][timeout:25];('+clauses+');out center tags;';
+ const servers=[
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter'
+ ];
+ let data=null,lastError=null;
+ for(const server of servers){
+  try{
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),30000);
+   const response=await fetch(server,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8','Accept':'application/json'},body:'data='+encodeURIComponent(query),signal:controller.signal});
+   clearTimeout(timer);
+   if(!response.ok)throw new Error('HTTP '+response.status);
+   const result=await response.json();
+   if(!Array.isArray(result.elements))throw new Error('Risposta cartografica non valida');
+   data=result;break;
+  }catch(error){lastError=error;}
+ }
+ if(!data){status.textContent='Ricerca temporaneamente non disponibile. Riprova tra qualche secondo.';console.warn('POI Overpass:',lastError);return;}
+ const fallbackNames={restaurant:'Ristorante',fast_food:'Fast food',cafe:'Bar e caffè',fuel:'Distributore',parking:'Parcheggio',pharmacy:'Farmacia',hospital:'Ospedale',supermarket:'Supermercato',cinema:'Cinema',beach:'Spiaggia',monument:'Monumento',museum:'Museo',atm:'Bancomat'};
+ const icons={restaurant:'🍽️',fast_food:'🍔',cafe:'☕',fuel:'⛽',parking:'🅿️',pharmacy:'✚',hospital:'✚',supermarket:'🛒',cinema:'🎬',beach:'🏖️',monument:'🏛️',museum:'🏛️',atm:'🏧'};
+ const seen=new Set();
+ data.elements.slice(0,250).forEach(el=>{
+  const lat=el.lat??el.center?.lat,lon=el.lon??el.center?.lon;
+  if(typeof lat!=='number'||typeof lon!=='number')return;
+  const key=selected.find(k=>{const tag=poiTags[k];return tag&&el.tags?.[tag[0]]===tag[1];})||selected[0];
+  const name=el.tags?.name||el.tags?.['name:it']||fallbackNames[key]||'Punto di interesse';
+  const identity=el.type+':'+el.id;if(seen.has(identity))return;seen.add(identity);
+  const marker=document.createElement('div');marker.className='poi-marker';marker.title=name;
+  const icon=document.createElement('span');icon.className='poi-marker-icon';icon.textContent=icons[key]||'●';
+  const label=document.createElement('span');label.className='poi-marker-name';label.textContent=name;
+  marker.append(icon,label);
+  const popup=new maplibregl.Popup({offset:18}).setText(name);
+  poiMarkers.push(new maplibregl.Marker({element:marker,anchor:'bottom'}).setLngLat([lon,lat]).setPopup(popup).addTo(map));
+ });
+ status.textContent=poiMarkers.length
+  ?poiMarkers.length+' punti trovati entro 7 km.'
+  :'Nessun punto trovato entro 7 km. Sposta la mappa o prova un’altra categoria.';
 }
 // I punti selezionati restano sulla mappa durante la navigazione: niente richieste ripetute ad ogni movimento.
 document.getElementById('destination').addEventListener('keydown',e=>{if(e.key==='Enter')searchPlace()});
