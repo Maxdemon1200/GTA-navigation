@@ -8,7 +8,7 @@
 <script src="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=Rajdhani:wght@500;600;700&display=swap');
-:root{--lime:#b7f34a;--panel:rgba(15,19,15,.9);--line:rgba(224,239,211,.22)}
+:root{--lime:#ff4fa3;--panel:rgba(15,19,15,.9);--line:rgba(224,239,211,.22)}
 *{box-sizing:border-box}
 body{margin:0;background:#090d12;color:#f5f5eb;font-family:'Rajdhani',sans-serif;overflow:hidden}
 #map{position:absolute;inset:0}
@@ -44,9 +44,24 @@ button{border:0;border-radius:2px;background:var(--lime);color:#151a10;font:900 
 #nav-turn{font:900 22px/1.1 'Barlow Condensed';letter-spacing:1px;color:#fff}
 #nav-sub{font:700 11px 'Rajdhani';letter-spacing:1.5px;color:var(--lime);margin-top:5px}
 @media(max-width:600px){#nav-hud{top:68px;left:12px;width:calc(100vw - 24px);padding:10px 12px}#nav-turn{font-size:19px}}
+#poi-panel{position:absolute;top:145px;right:20px;width:270px;z-index:3;padding:0;overflow:hidden;border-left:3px solid var(--lime)}
+#poi-toggle,#nav-exit{width:100%;min-height:42px;padding:10px 13px;display:flex;align-items:center;justify-content:space-between;background:transparent;color:#fff;font:900 13px 'Rajdhani';letter-spacing:1.6px;text-align:left}
+#poi-content{padding:0 12px 12px}
+.poi-group{border-top:1px solid #ffffff22;padding:8px 0}
+.poi-heading{width:100%;padding:3px 0;background:transparent;color:var(--lime);text-align:left;display:flex;justify-content:space-between;font:800 11px 'Rajdhani';letter-spacing:1.3px}
+.poi-options{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding-top:8px}
+.poi-options label{display:flex;align-items:center;gap:6px;font:600 12px 'Rajdhani';color:#e9e9df}
+.poi-options input{flex:0 0 auto;width:14px;height:14px;accent-color:#ff4fa3}
+#poi-status{font:600 10px 'Rajdhani';color:#aeb7a9;line-height:1.4}
+#nav-exit{position:absolute;right:8px;top:8px;width:auto;min-height:30px;border:1px solid #ffffff33;border-radius:5px;padding:4px 9px}
+body.nav-mode #poi-panel,body.nav-mode .search,body.nav-mode .top,body.nav-mode .bottom,body.nav-mode #message{display:none!important}
+body.nav-mode #nav-hud{display:block;position:absolute;top:18px;left:18px;width:min(360px,calc(100vw - 36px));border-left:4px solid #ff4fa3;border-radius:12px;padding:18px 16px 14px}
+body.nav-mode #nav-turn{font-size:26px;padding-right:65px}
+body.nav-mode #nav-sub{color:#ff83bd}
+@media(max-width:600px){#poi-panel{top:127px;right:12px;width:min(260px,calc(100vw - 24px));max-height:45vh;overflow:auto}body.nav-mode #nav-hud{top:12px;left:12px;width:calc(100vw - 24px)}body.nav-mode #nav-turn{font-size:21px}}
 #results{display:none;position:absolute;top:145px;left:20px;width:min(390px,calc(100vw - 40px));max-height:42vh;overflow:auto;background:rgba(12,16,12,.96);border:1px solid var(--line);border-left:3px solid var(--lime);z-index:5;box-shadow:0 12px 35px #000b;backdrop-filter:blur(14px)}
 .result-item{display:block;width:100%;padding:11px 13px;text-align:left;background:transparent;color:#f5f5eb;border:0;border-bottom:1px solid #ffffff20;font:600 13px 'Rajdhani';letter-spacing:.3px;line-height:1.35}
-.result-item:hover{background:#b7f34a;color:#111}
+.result-item:hover{background:#ff4fa3;color:#111}
 @media(max-width:600px){
  #results{top:127px;left:12px;width:calc(100vw - 24px)}
  .top{top:12px;left:12px;right:12px}.logo{font-size:29px}.logo span{font-size:10px;letter-spacing:3px;margin-top:6px}
@@ -71,7 +86,22 @@ button{border:0;border-radius:2px;background:var(--lime);color:#151a10;font:900 
  <button onclick="searchPlace()">CERCA</button>
 </div>
 <div id="results"></div>
-<div id="nav-hud"><div class="info">PROSSIMA MANOVRA</div><div id="nav-turn">PROSEGUI DRITTO</div><div id="nav-sub">-- m</div></div>
+<aside id="poi-panel" class="panel">
+ <button id="poi-toggle" type="button" aria-expanded="true">PUNTI DI INTERESSE <span>⌄</span></button>
+ <div id="poi-content">
+  <div class="poi-group"><button class="poi-heading" type="button">RISTORAZIONE <span>−</span></button><div class="poi-options">
+   <label><input type="checkbox" data-poi="restaurant"> Ristoranti</label><label><input type="checkbox" data-poi="fast_food"> Fast food</label><label><input type="checkbox" data-poi="cafe"> Bar e caffè</label>
+  </div></div>
+  <div class="poi-group"><button class="poi-heading" type="button">SERVIZI <span>−</span></button><div class="poi-options">
+   <label><input type="checkbox" data-poi="fuel"> Benzinai</label><label><input type="checkbox" data-poi="parking"> Parcheggi</label><label><input type="checkbox" data-poi="pharmacy"> Farmacie</label><label><input type="checkbox" data-poi="hospital"> Ospedali</label>
+  </div></div>
+  <div class="poi-group"><button class="poi-heading" type="button">NEGOZI E TEMPO LIBERO <span>−</span></button><div class="poi-options">
+   <label><input type="checkbox" data-poi="supermarket"> Supermercati</label><label><input type="checkbox" data-poi="cinema"> Cinema</label><label><input type="checkbox" data-poi="beach"> Spiagge</label>
+  </div></div>
+  <div id="poi-status">Seleziona una categoria per mostrare i punti sulla mappa.</div>
+ </div>
+</aside>
+<div id="nav-hud"><button id="nav-exit" type="button" title="Torna alla mappa">MAPPA</button><div class="info">PROSSIMA MANOVRA</div><div id="nav-turn">PROSEGUI DRITTO</div><div id="nav-sub">-- m</div></div>
 <div id="message">◆ ESPLORAZIONE LIBERA · MAPPA PRONTA</div>
 <div class="bottom">
  <div class="panel">
@@ -110,6 +140,8 @@ let routeSteps=[];
 let routeCum=[];
 let previousGpsPosition=null;
 let lastRerouteAt=0;
+let poiMarkers=[];
+const poiTags={restaurant:['amenity','restaurant'],fast_food:['amenity','fast_food'],cafe:['amenity','cafe'],fuel:['amenity','fuel'],parking:['amenity','parking'],pharmacy:['amenity','pharmacy'],hospital:['amenity','hospital'],supermarket:['shop','supermarket'],cinema:['amenity','cinema'],beach:['natural','beach']};
 let navCameraReady=false;
 
 function applyGtaSixMapPalette(){
@@ -145,6 +177,7 @@ function applyGtaSixMapPalette(){
 }
 map.on('load',()=>{
  document.getElementById('message').textContent='MAPPA PRONTA · GTA NAVIGATION';
+ setupPoiControls();
  applyGtaSixMapPalette();
  const layers=map.getStyle().layers;
  const labelLayer=layers.find(l=>l.type==='symbol' && l.layout && l.layout['text-field']);
@@ -302,6 +335,7 @@ async function toggleNavigation(){
  if(navigationActive){
   navigationActive=false;
   if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}
+  document.body.classList.remove('nav-mode');
   document.getElementById('nav-hud').classList.remove('visible');
   document.querySelector('.search').style.display='flex';
   activeRoute=null;routeSteps=[];routeCum=[];previousGpsPosition=null;navCameraReady=false;
@@ -346,6 +380,7 @@ async function toggleNavigation(){
   route.geometry.coordinates.forEach(point=>bounds.extend(point));
   map.fitBounds(bounds,{padding:{top:145,bottom:190,left:45,right:45},duration:1200});
   navigationActive=true;navCameraReady=false;previousGpsPosition=null;
+  document.body.classList.add('nav-mode');
   document.getElementById('nav-hud').classList.add('visible');
   document.querySelector('.search').style.display='none';
   button.disabled=false;button.classList.add('stop');button.textContent='■ TERMINA NAVIGAZIONE';
@@ -377,6 +412,38 @@ async function toggleNavigation(){
   }
  }
 }
+document.getElementById('nav-exit').addEventListener('click',()=>{if(navigationActive)toggleNavigation();});
+function setupPoiControls(){
+ const toggle=document.getElementById('poi-toggle'),content=document.getElementById('poi-content');
+ toggle.addEventListener('click',()=>{const hidden=content.style.display==='none';content.style.display=hidden?'block':'none';toggle.setAttribute('aria-expanded',String(hidden));toggle.querySelector('span').textContent=hidden?'⌄':'⌃';});
+ document.querySelectorAll('.poi-heading').forEach(btn=>btn.addEventListener('click',()=>{const panel=btn.nextElementSibling;const hidden=panel.style.display==='none';panel.style.display=hidden?'grid':'none';btn.querySelector('span').textContent=hidden?'−':'+';}));
+ document.querySelectorAll('[data-poi]').forEach(input=>input.addEventListener('change',loadSelectedPois));
+}
+async function loadSelectedPois(){
+ const selected=[...document.querySelectorAll('[data-poi]:checked')].map(x=>x.dataset.poi);
+ const status=document.getElementById('poi-status');
+ poiMarkers.forEach(m=>m.remove());poiMarkers=[];
+ if(!selected.length){status.textContent='Nessuna categoria selezionata.';return;}
+ status.textContent='Caricamento punti di interesse...';
+ const c=map.getCenter(),radius=5000;
+ const clauses=selected.map(k=>{const [key,val]=poiTags[k];return 'node(around:'+radius+','+c.lat+','+c.lng+')['+key+'="'+val+'"];way(around:'+radius+','+c.lat+','+c.lng+')['+key+'="'+val+'"];';}).join('');
+ const query='[out:json][timeout:20];('+clauses+');out center tags;';
+ try{
+  const response=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'data='+encodeURIComponent(query)});
+  if(!response.ok)throw new Error('overpass');
+  const data=await response.json();
+  data.elements.slice(0,120).forEach(el=>{
+   const lat=el.lat??el.center?.lat,lon=el.lon??el.center?.lon;if(!lat||!lon)return;
+   const name=el.tags?.name||el.tags?.['name:it']||'Punto di interesse';
+   const marker=document.createElement('div');marker.className='poi-marker';marker.title=name;
+   marker.textContent='●';marker.style.cssText='color:#ff4fa3;font-size:24px;text-shadow:0 1px 6px #000;cursor:pointer';
+   const popup=new maplibregl.Popup({offset:16}).setText(name);
+   poiMarkers.push(new maplibregl.Marker({element:marker}).setLngLat([lon,lat]).setPopup(popup).addTo(map));
+  });
+  status.textContent=poiMarkers.length+' punti trovati entro 5 km.';
+ }catch(e){status.textContent='Punti non disponibili al momento. Riprova tra poco.';}
+}
+map.on('moveend',()=>{if(document.querySelector('[data-poi]:checked'))loadSelectedPois();});
 document.getElementById('destination').addEventListener('keydown',e=>{if(e.key==='Enter')searchPlace()});
 document.addEventListener('click',e=>{if(!e.target.closest('.search')&&!e.target.closest('#results'))document.getElementById('results').style.display='none'});
 </script>
