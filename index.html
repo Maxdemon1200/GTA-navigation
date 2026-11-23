@@ -23,6 +23,9 @@ input{flex:1;min-width:0;background:#090c09;color:white;border:1px solid #596050
 input:focus{border-color:var(--lime)}
 input::placeholder{color:#879080}
 button{border:0;border-radius:2px;background:var(--lime);color:#151a10;font:900 13px 'Rajdhani';letter-spacing:1.5px;padding:0 16px;cursor:pointer}
+#start-nav{display:none;margin-top:12px;width:100%;min-height:43px;background:var(--lime);color:#151a10;font:900 15px 'Barlow Condensed';letter-spacing:2px}
+#start-nav.visible{display:block}
+#start-nav.stop{background:#d94b42;color:#fff}
 .bottom{position:absolute;bottom:18px;left:20px;right:20px;display:flex;justify-content:space-between;align-items:end;gap:10px}
 .bottom>.panel{width:min(390px,calc(100vw - 40px));border-top:2px solid var(--lime)}
 .info{font:700 11px 'Rajdhani';letter-spacing:2px;color:#aab4a1}
@@ -63,6 +66,7 @@ button{border:0;border-radius:2px;background:var(--lime);color:#151a10;font:900 
   <div class="info">NAVIGATION SYSTEM</div>
   <div class="big" id="status">FREE ROAM</div>
   <div class="info" id="distance">Nessun percorso attivo</div>
+  <button id="start-nav" onclick="toggleNavigation()">▶ AVVIA NAVIGAZIONE</button>
  </div>
  <div class="controls">
   <button onclick="locate()" title="GPS">◎</button>
@@ -82,9 +86,13 @@ const map=new maplibregl.Map({
 });
 map.addControl(new maplibregl.NavigationControl({showCompass:false}),'bottom-right');
 let userMarker=null;
+let destinationMarker=null;
 let routeLayer=false;
 let is3D=true;
 let userPosition=null;
+let destinationPosition=null;
+let navigationActive=false;
+let watchId=null;
 
 map.on('load',()=>{
  document.getElementById('message').textContent='MAPPA PRONTA · GTA NAVIGATION';
@@ -135,12 +143,73 @@ async function searchPlace(){
   const data=await r.json();
   if(!data.length){document.getElementById('message').textContent='DESTINAZIONE NON TROVATA';return}
   const p=[Number(data[0].lon),Number(data[0].lat)];
-  new maplibregl.Marker({color:'#ffbd38'}).setLngLat(p).addTo(map);
+  destinationPosition=p;
+  if(destinationMarker)destinationMarker.remove();
+  destinationMarker=new maplibregl.Marker({color:'#ffbd38'}).setLngLat(p).addTo(map);
   map.flyTo({center:p,zoom:16,pitch:60});
   document.getElementById('status').textContent='DESTINAZIONE';
   document.getElementById('distance').textContent=data[0].display_name;
-  document.getElementById('message').textContent='DESTINAZIONE TROVATA';
+  const startButton=document.getElementById('start-nav');
+  startButton.classList.add('visible');
+  startButton.classList.remove('stop');
+  startButton.textContent='▶ AVVIA NAVIGAZIONE';
+  document.getElementById('message').textContent='DESTINAZIONE TROVATA · PREMI AVVIA NAVIGAZIONE';
  }catch(e){document.getElementById('message').textContent='ERRORE DI CONNESSIONE'}
+}
+async function toggleNavigation(){
+ const button=document.getElementById('start-nav');
+ if(navigationActive){
+  navigationActive=false;
+  if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}
+  button.classList.remove('stop');
+  button.textContent='▶ AVVIA NAVIGAZIONE';
+  document.getElementById('status').textContent='PERCORSO INTERROTTO';
+  document.getElementById('message').textContent='NAVIGAZIONE TERMINATA';
+  return;
+ }
+ if(!destinationPosition){document.getElementById('message').textContent='CERCA PRIMA UNA DESTINAZIONE';return}
+ if(!navigator.geolocation){document.getElementById('message').textContent='GPS NON SUPPORTATO SU QUESTO DISPOSITIVO';return}
+ button.disabled=true;
+ button.textContent='ACQUISIZIONE GPS...';
+ document.getElementById('message').textContent='◆ ACQUISIZIONE POSIZIONE PER IL PERCORSO';
+ navigator.geolocation.getCurrentPosition(async pos=>{
+  userPosition=[pos.coords.longitude,pos.coords.latitude];
+  if(userMarker)userMarker.remove();
+  userMarker=new maplibregl.Marker({color:'#b7f34a'}).setLngLat(userPosition).addTo(map);
+  try{
+   const coords=userPosition[0]+','+userPosition[1]+';'+destinationPosition[0]+','+destinationPosition[1];
+   const response=await fetch('https://router.project-osrm.org/route/v1/driving/'+coords+'?overview=full&geometries=geojson&steps=true');
+   const result=await response.json();
+   if(!result.routes||!result.routes.length)throw new Error('route');
+   const route=result.routes[0];
+   const feature={type:'Feature',properties:{},geometry:route.geometry};
+   if(map.getSource('active-route'))map.getSource('active-route').setData(feature);
+   else{
+    map.addSource('active-route',{type:'geojson',data:feature});
+    map.addLayer({id:'active-route-line',type:'line',source:'active-route',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#b7f34a','line-width':7,'line-opacity':.95}});
+   }
+   const bounds=new maplibregl.LngLatBounds(userPosition,userPosition);
+   route.geometry.coordinates.forEach(c=>bounds.extend(c));
+   map.fitBounds(bounds,{padding:{top:130,bottom:180,left:45,right:45},duration:1200});
+   navigationActive=true;
+   button.disabled=false;button.classList.add('stop');button.textContent='■ TERMINA NAVIGAZIONE';
+   document.getElementById('status').textContent='NAVIGAZIONE ATTIVA';
+   const km=(route.distance/1000).toFixed(1);
+   const mins=Math.max(1,Math.round(route.duration/60));
+   document.getElementById('distance').textContent=km+' km · circa '+mins+' min · percorso in auto';
+   document.getElementById('message').textContent='◆ PERCORSO CALCOLATO · SEGUI LA LINEA VERDE';
+   watchId=navigator.geolocation.watchPosition(p=>{
+    userPosition=[p.coords.longitude,p.coords.latitude];
+    if(userMarker)userMarker.setLngLat(userPosition);
+   },()=>{}, {enableHighAccuracy:true,maximumAge:3000,timeout:15000});
+  }catch(err){
+   button.disabled=false;button.textContent='▶ AVVIA NAVIGAZIONE';
+   document.getElementById('message').textContent='IMPOSSIBILE CALCOLARE IL PERCORSO · RIPROVA';
+  }
+ },()=>{
+  button.disabled=false;button.textContent='▶ AVVIA NAVIGAZIONE';
+  document.getElementById('message').textContent='ATTIVA IL GPS E CONSENTI L’ACCESSO ALLA POSIZIONE';
+ },{enableHighAccuracy:true,timeout:15000});
 }
 document.getElementById('destination').addEventListener('keydown',e=>{if(e.key==='Enter')searchPlace()});
 </script>
