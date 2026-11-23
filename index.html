@@ -39,6 +39,11 @@ button{border:0;border-radius:2px;background:var(--lime);color:#151a10;font:900 
 .maplibregl-ctrl-group button{background:transparent!important;width:36px!important;height:36px!important}
 .maplibregl-ctrl-group button span{filter:invert(1)}
 
+#nav-hud{display:none;position:absolute;top:17px;left:20px;width:min(390px,calc(100vw - 40px));z-index:4;background:rgba(10,15,11,.94);border:1px solid rgba(224,239,211,.28);border-left:4px solid var(--lime);padding:12px 15px;box-shadow:0 10px 30px #000b;backdrop-filter:blur(14px)}
+#nav-hud.visible{display:block}
+#nav-turn{font:900 22px/1.1 'Barlow Condensed';letter-spacing:1px;color:#fff}
+#nav-sub{font:700 11px 'Rajdhani';letter-spacing:1.5px;color:var(--lime);margin-top:5px}
+@media(max-width:600px){#nav-hud{top:12px;left:12px;width:calc(100vw - 24px);padding:10px 12px}#nav-turn{font-size:19px}}
 #results{display:none;position:absolute;top:145px;left:20px;width:min(390px,calc(100vw - 40px));max-height:42vh;overflow:auto;background:rgba(12,16,12,.96);border:1px solid var(--line);border-left:3px solid var(--lime);z-index:5;box-shadow:0 12px 35px #000b;backdrop-filter:blur(14px)}
 .result-item{display:block;width:100%;padding:11px 13px;text-align:left;background:transparent;color:#f5f5eb;border:0;border-bottom:1px solid #ffffff20;font:600 13px 'Rajdhani';letter-spacing:.3px;line-height:1.35}
 .result-item:hover{background:#b7f34a;color:#111}
@@ -66,6 +71,7 @@ button{border:0;border-radius:2px;background:var(--lime);color:#151a10;font:900 
  <button onclick="searchPlace()">CERCA</button>
 </div>
 <div id="results"></div>
+<div id="nav-hud"><div class="info">PROSSIMA MANOVRA</div><div id="nav-turn">PROSEGUI DRITTO</div><div id="nav-sub">-- m</div></div>
 <div id="message">◆ ESPLORAZIONE LIBERA · MAPPA PRONTA</div>
 <div class="bottom">
  <div class="panel">
@@ -99,6 +105,12 @@ let userPosition=null;
 let destinationPosition=null;
 let navigationActive=false;
 let watchId=null;
+let activeRoute=null;
+let routeSteps=[];
+let routeCum=[];
+let previousGpsPosition=null;
+let lastRerouteAt=0;
+let navCameraReady=false;
 
 map.on('load',()=>{
  document.getElementById('message').textContent='MAPPA PRONTA · GTA NAVIGATION';
@@ -175,6 +187,73 @@ function selectDestination(item){
  document.getElementById('message').textContent='◆ DESTINAZIONE SELEZIONATA · CALCOLO DEL PERCORSO PIÙ VELOCE';
  toggleNavigation();
 }
+function metersBetween(a,b){
+ const R=6371000,rad=x=>x*Math.PI/180;
+ const dLat=rad(b[1]-a[1]),dLon=rad(b[0]-a[0]);
+ const q=Math.sin(dLat/2)**2+Math.cos(rad(a[1]))*Math.cos(rad(b[1]))*Math.sin(dLon/2)**2;
+ return 2*R*Math.asin(Math.sqrt(q));
+}
+function nearestRouteIndex(pos){
+ if(!activeRoute||!activeRoute.length)return 0;
+ let best=Infinity,index=0;
+ activeRoute.forEach((p,i)=>{const d=metersBetween(pos,p);if(d<best){best=d;index=i;}});
+ return {index,distance:best};
+}
+function routeBearing(a,b){
+ const rad=x=>x*Math.PI/180,deg=x=>x*180/Math.PI;
+ const y=Math.sin(rad(b[0]-a[0]))*Math.cos(rad(b[1]));
+ const x=Math.cos(rad(a[1]))*Math.sin(rad(b[1]))-Math.sin(rad(a[1]))*Math.cos(rad(b[1]))*Math.cos(rad(b[0]-a[0]));
+ return (deg(Math.atan2(y,x))+360)%360;
+}
+function updateNavigationProgress(pos){
+ if(!navigationActive||!activeRoute||!activeRoute.length)return;
+ const nearest=nearestRouteIndex(pos),idx=nearest.index;
+ let remaining=0;
+ for(let i=idx;i<activeRoute.length-1;i++)remaining+=metersBetween(activeRoute[i],activeRoute[i+1]);
+ const km=(remaining/1000).toFixed(1);
+ const total=routeCum[routeCum.length-1]||1;
+ const ratio=Math.max(0,Math.min(1,remaining/total));
+ const mins=Math.max(1,Math.round((Number(window.activeRouteDuration)||0)*ratio/60));
+ document.getElementById('distance').textContent=km+' km rimanenti · circa '+mins+' min';
+ const passed=activeRoute.slice(0,idx+1);
+ if(passed.length>1){
+  const data={type:'Feature',properties:{},geometry:{type:'LineString',coordinates:passed}};
+  if(map.getSource('travelled-route'))map.getSource('travelled-route').setData(data);
+ }
+ let next=null,nextIndex=Infinity;
+ routeSteps.forEach(s=>{if(s._routeIndex>=idx&&s._routeIndex<nextIndex){next=s;nextIndex=s._routeIndex;}});
+ if(next){
+  const toTurn=routeCum[nextIndex]-routeCum[idx];
+  const m=next.maneuver||{},type=m.type||'continue',modifier=m.modifier||'';
+  const words={left:'SVOLTA A SINISTRA',right:'SVOLTA A DESTRA',slight_left:'TIENI LA SINISTRA',slight_right:'TIENI LA DESTRA',sharp_left:'SVOLTA DECISAMENTE A SINISTRA',sharp_right:'SVOLTA DECISAMENTE A DESTRA',uturn:'INVERTI LA MARCIA',straight:'PROSEGUI DRITTO'};
+  let instruction=words[modifier]|| (type==='roundabout'?'ENTRA NELLA ROTONDA':type==='arrive'?'SEI ARRIVATO A DESTINAZIONE':type==='depart'?'PROSEGUI DRITTO':'PROSEGUI');
+  if(next.name)instruction+=' · '+next.name.toUpperCase();
+  document.getElementById('nav-turn').textContent=instruction;
+  document.getElementById('nav-sub').textContent=(Math.max(0,Math.round(toTurn))+' M ALLA MANOVRA').toString();
+ }else{
+  document.getElementById('nav-turn').textContent='SEI ARRIVATO A DESTINAZIONE';
+  document.getElementById('nav-sub').textContent='PERCORSO COMPLETATO';
+ }
+ if(previousGpsPosition&&metersBetween(previousGpsPosition,pos)>2){
+  const bearing=routeBearing(previousGpsPosition,pos);
+  map.easeTo({center:pos,zoom:17.2,pitch:68,bearing,duration:850,essential:true});
+ }else if(!navCameraReady){map.easeTo({center:pos,zoom:17.2,pitch:68,duration:1000});navCameraReady=true;}
+ previousGpsPosition=pos;
+ if(nearest.distance>85&&Date.now()-lastRerouteAt>20000){lastRerouteAt=Date.now();recalculateRoute(pos);}
+}
+async function recalculateRoute(pos){
+ try{
+  const coords=pos[0]+','+pos[1]+';'+destinationPosition[0]+','+destinationPosition[1];
+  const r=await fetch('https://router.project-osrm.org/route/v1/driving/'+coords+'?overview=full&geometries=geojson&steps=true');
+  const d=await r.json();if(d.code!=='Ok'||!d.routes?.length)return;
+  const route=d.routes[0];activeRoute=route.geometry.coordinates;window.activeRouteDuration=route.duration;
+  routeSteps=(route.legs||[]).flatMap(l=>l.steps||[]);
+  routeCum=[0];for(let i=1;i<activeRoute.length;i++)routeCum[i]=routeCum[i-1]+metersBetween(activeRoute[i-1],activeRoute[i]);
+  const feature={type:'Feature',properties:{},geometry:route.geometry};
+  if(map.getSource('active-route'))map.getSource('active-route').setData(feature);
+  document.getElementById('message').textContent='PERCORSO RICALCOLATO';
+ }catch(e){}
+}
 function getPositionForRoute(){
  return new Promise((resolve,reject)=>{
   navigator.geolocation.getCurrentPosition(resolve,error=>{
@@ -188,6 +267,9 @@ async function toggleNavigation(){
  if(navigationActive){
   navigationActive=false;
   if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}
+  document.getElementById('nav-hud').classList.remove('visible');
+  document.querySelector('.search').style.display='flex';
+  activeRoute=null;routeSteps=[];routeCum=[];previousGpsPosition=null;navCameraReady=false;
   button.classList.remove('stop');button.textContent='▶ AVVIA NAVIGAZIONE';
   document.getElementById('status').textContent='PERCORSO INTERROTTO';
   document.getElementById('message').textContent='NAVIGAZIONE TERMINATA';
@@ -213,26 +295,36 @@ async function toggleNavigation(){
   const result=await response.json();
   if(result.code!=='Ok'||!result.routes||!result.routes.length)throw new Error('NO_ROUTE');
   const route=result.routes[0];
+  activeRoute=route.geometry.coordinates;window.activeRouteDuration=route.duration;
+  routeSteps=(route.legs||[]).flatMap(l=>l.steps||[]);
+  routeCum=[0];for(let i=1;i<activeRoute.length;i++)routeCum[i]=routeCum[i-1]+metersBetween(activeRoute[i-1],activeRoute[i]);
+  routeSteps.forEach(s=>{const loc=s.maneuver?.location;if(loc){let best=Infinity,ix=0;activeRoute.forEach((p,i)=>{const d=metersBetween(loc,p);if(d<best){best=d;ix=i;}});s._routeIndex=ix;}else s._routeIndex=0;});
   const feature={type:'Feature',properties:{},geometry:route.geometry};
   if(map.getSource('active-route'))map.getSource('active-route').setData(feature);
   else{
    map.addSource('active-route',{type:'geojson',data:feature});
-   map.addLayer({id:'active-route-line',type:'line',source:'active-route',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#b7f34a','line-width':7,'line-opacity':.98}});
+   map.addLayer({id:'active-route-line',type:'line',source:'active-route',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#b7f34a','line-width':8,'line-opacity':.98}});
   }
+  const travelled={type:'Feature',properties:{},geometry:{type:'LineString',coordinates:[userPosition,userPosition]}};
+  if(!map.getSource('travelled-route')){map.addSource('travelled-route',{type:'geojson',data:travelled});map.addLayer({id:'travelled-route-line',type:'line',source:'travelled-route',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#ffffff','line-width':4,'line-opacity':.7}});}
   const bounds=new maplibregl.LngLatBounds(userPosition,userPosition);
   route.geometry.coordinates.forEach(point=>bounds.extend(point));
   map.fitBounds(bounds,{padding:{top:145,bottom:190,left:45,right:45},duration:1200});
-  navigationActive=true;
+  navigationActive=true;navCameraReady=false;previousGpsPosition=null;
+  document.getElementById('nav-hud').classList.add('visible');
+  document.querySelector('.search').style.display='none';
   button.disabled=false;button.classList.add('stop');button.textContent='■ TERMINA NAVIGAZIONE';
   document.getElementById('status').textContent='NAVIGAZIONE ATTIVA';
   const km=(route.distance/1000).toFixed(1);
   const mins=Math.max(1,Math.round(route.duration/60));
   document.getElementById('distance').textContent=km+' km · circa '+mins+' min · in auto';
   document.getElementById('message').textContent='◆ PERCORSO PRONTO · PARTENZA DALLA TUA POSIZIONE';
+  updateNavigationProgress(userPosition);
   watchId=navigator.geolocation.watchPosition(p=>{
    userPosition=[p.coords.longitude,p.coords.latitude];
    if(userMarker)userMarker.setLngLat(userPosition);
-  },()=>{}, {enableHighAccuracy:true,maximumAge:5000,timeout:20000});
+   updateNavigationProgress(userPosition);
+  },err=>{document.getElementById('gps').textContent='GPS: SEGNALE DEBOLE';}, {enableHighAccuracy:true,maximumAge:1500,timeout:20000});
  }catch(err){
   button.disabled=false;button.classList.remove('stop');button.textContent='▶ AVVIA NAVIGAZIONE';
   if(err.code===1){
