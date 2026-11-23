@@ -43,6 +43,8 @@ button{border:0;border-radius:2px;background:var(--lime);color:#151a10;font:900 
 #nav-hud.visible{display:block}
 #nav-turn{font:900 22px/1.1 'Barlow Condensed';letter-spacing:1px;color:#fff}
 #nav-sub{font:700 11px 'Rajdhani';letter-spacing:1.5px;color:var(--lime);margin-top:5px}
+#nav-stats{display:flex;gap:22px;margin-top:12px;padding-top:9px;border-top:1px solid #ffffff25;font:700 10px 'Rajdhani';letter-spacing:1.2px;color:#bfc8b9}
+#nav-stats span{display:flex;flex-direction:column;gap:3px}#nav-stats b{font:800 17px 'Barlow Condensed';color:#fff;letter-spacing:.5px}
 @media(max-width:600px){#nav-hud{top:68px;left:12px;width:calc(100vw - 24px);padding:10px 12px}#nav-turn{font-size:19px}}
 #poi-panel{position:absolute;top:145px;right:20px;width:270px;z-index:3;padding:0;overflow:hidden;border-left:3px solid var(--lime)}
 #poi-toggle,#nav-exit{width:100%;min-height:42px;padding:10px 13px;display:flex;align-items:center;justify-content:space-between;background:transparent;color:#fff;font:900 13px 'Rajdhani';letter-spacing:1.6px;text-align:left}
@@ -101,7 +103,7 @@ body.nav-mode #nav-sub{color:#b9a0ff}
   <div id="poi-status">Seleziona una categoria per mostrare i punti sulla mappa.</div>
  </div>
 </aside>
-<div id="nav-hud"><button id="nav-exit" type="button" title="Torna alla mappa">MAPPA</button><div class="info">PROSSIMA MANOVRA</div><div id="nav-turn">PROSEGUI DRITTO</div><div id="nav-sub">-- m</div></div>
+<div id="nav-hud"><button id="nav-exit" type="button" title="Torna alla mappa">MAPPA</button><div class="info">PROSSIMA MANOVRA</div><div id="nav-turn">PROSEGUI DRITTO</div><div id="nav-sub">-- m</div><div id="nav-stats"><span>VELOCITÀ <b id="nav-speed">0 km/h</b></span><span>ARRIVO <b id="nav-eta">--:--</b></span></div></div>
 <div id="message">◆ ESPLORAZIONE LIBERA · MAPPA PRONTA</div>
 <div class="bottom">
  <div class="panel">
@@ -250,9 +252,49 @@ function selectDestination(item){
  document.getElementById('distance').textContent=item.display_name;
  const startButton=document.getElementById('start-nav');
  startButton.classList.add('visible');startButton.classList.remove('stop');
- startButton.disabled=false;startButton.textContent='▶ CALCOLO IN CORSO...';
- document.getElementById('message').textContent='◆ DESTINAZIONE SELEZIONATA · CALCOLO DEL PERCORSO PIÙ VELOCE';
- toggleNavigation();
+ startButton.disabled=true;startButton.textContent='CALCOLO PERCORSO...';
+ document.getElementById('message').textContent='◆ CALCOLO DEL PERCORSO MIGLIORE · LA NAVIGAZIONE NON È ANCORA AVVIATA';
+ prepareRoutePreview();
+}
+async function prepareRoutePreview(){
+ const button=document.getElementById('start-nav');
+ try{
+  if(!navigator.geolocation)throw new Error('GPS_UNAVAILABLE');
+  document.getElementById('gps').textContent='GPS: RICERCA...';
+  const pos=await getPositionForRoute();
+  userPosition=[pos.coords.longitude,pos.coords.latitude];
+  if(userMarker)userMarker.remove();
+  userMarker=new maplibregl.Marker({color:'#8b5cf6'}).setLngLat(userPosition).addTo(map);
+  document.getElementById('gps').textContent='GPS: ATTIVO';
+  const coords=userPosition[0]+','+userPosition[1]+';'+destinationPosition[0]+','+destinationPosition[1];
+  const response=await fetch('https://router.project-osrm.org/route/v1/driving/'+coords+'?overview=full&geometries=geojson&steps=true');
+  if(!response.ok)throw new Error('ROUTE_SERVER');
+  const result=await response.json();
+  if(result.code!=='Ok'||!result.routes?.length)throw new Error('NO_ROUTE');
+  const route=result.routes[0];
+  activeRoute=route.geometry.coordinates;window.activeRouteDuration=route.duration;
+  routeSteps=(route.legs||[]).flatMap(l=>l.steps||[]);
+  routeCum=[0];for(let i=1;i<activeRoute.length;i++)routeCum[i]=routeCum[i-1]+metersBetween(activeRoute[i-1],activeRoute[i]);
+  routeSteps.forEach(step=>{const loc=step.maneuver?.location;if(loc){let best=Infinity,ix=0;activeRoute.forEach((p,i)=>{const d=metersBetween(loc,p);if(d<best){best=d;ix=i;}});step._routeIndex=ix;}else step._routeIndex=0;});
+  const feature={type:'Feature',properties:{},geometry:route.geometry};
+  if(map.getSource('active-route'))map.getSource('active-route').setData(feature);
+  else{
+   map.addSource('active-route',{type:'geojson',data:feature});
+   map.addLayer({id:'active-route-line',type:'line',source:'active-route',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#8b5cf6','line-width':8,'line-opacity':.98}});
+  }
+  const bounds=new maplibregl.LngLatBounds(userPosition,userPosition);
+  route.geometry.coordinates.forEach(point=>bounds.extend(point));
+  map.fitBounds(bounds,{padding:{top:150,bottom:190,left:55,right:55},duration:1100});
+  const km=(route.distance/1000).toFixed(1),mins=Math.max(1,Math.round(route.duration/60));
+  document.getElementById('status').textContent='PERCORSO PRONTO';
+  document.getElementById('distance').textContent=km+' km · circa '+mins+' min · percorso più veloce';
+  button.disabled=false;button.textContent='▶ AVVIA NAVIGAZIONE';
+  document.getElementById('message').textContent='PERCORSO MIGLIORE MOSTRATO · PREMI AVVIA NAVIGAZIONE QUANDO SEI PRONTO';
+ }catch(err){
+  button.disabled=true;button.textContent='PERCORSO NON DISPONIBILE';
+  document.getElementById('status').textContent='ATTESA POSIZIONE GPS';
+  document.getElementById('message').textContent=err.code===1?'AUTORIZZA LA POSIZIONE GPS PER CALCOLARE IL PERCORSO':err.message==='NO_ROUTE'?'NESSUN PERCORSO STRADALE TROVATO':'GPS O SERVIZIO PERCORSI NON DISPONIBILE · RIPROVA';
+ }
 }
 function metersBetween(a,b){
  const R=6371000,rad=x=>x*Math.PI/180;
@@ -281,6 +323,7 @@ function updateNavigationProgress(pos){
  const total=routeCum[routeCum.length-1]||1;
  const ratio=Math.max(0,Math.min(1,remaining/total));
  const mins=Math.max(1,Math.round((Number(window.activeRouteDuration)||0)*ratio/60));
+ const eta=new Date(Date.now()+mins*60000);document.getElementById('nav-eta').textContent=eta.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
  document.getElementById('distance').textContent=km+' km rimanenti · circa '+mins+' min';
  const passed=activeRoute.slice(0,idx+1);
  if(passed.length>1){
@@ -338,79 +381,33 @@ async function toggleNavigation(){
   document.body.classList.remove('nav-mode');
   document.getElementById('nav-hud').classList.remove('visible');
   document.querySelector('.search').style.display='flex';
-  activeRoute=null;routeSteps=[];routeCum=[];previousGpsPosition=null;navCameraReady=false;
-  button.classList.remove('stop');button.textContent='▶ AVVIA NAVIGAZIONE';
-  document.getElementById('status').textContent='PERCORSO INTERROTTO';
-  document.getElementById('message').textContent='NAVIGAZIONE TERMINATA';
+  previousGpsPosition=null;navCameraReady=false;
+  button.classList.remove('stop');button.disabled=false;button.textContent='▶ AVVIA NAVIGAZIONE';
+  document.getElementById('status').textContent='PERCORSO PRONTO';
+  document.getElementById('message').textContent='NAVIGAZIONE TERMINATA · IL PERCORSO RESTA VISIBILE';
   return;
  }
- if(!destinationPosition){document.getElementById('message').textContent='INSERISCI E SELEZIONA UN INDIRIZZO';return}
- if(!navigator.geolocation){document.getElementById('message').textContent='GPS NON SUPPORTATO: APRI IL SITO IN CHROME O SAFARI';return}
- button.disabled=true;button.textContent='RICERCA GPS...';
- document.getElementById('gps').textContent='GPS: RICERCA...';
- document.getElementById('message').textContent='◆ RILEVAMENTO DELLA TUA POSIZIONE GPS';
- try{
-  const pos=await getPositionForRoute();
-  userPosition=[pos.coords.longitude,pos.coords.latitude];
-  if(userMarker)userMarker.remove();
-  userMarker=new maplibregl.Marker({color:'#b7f34a'}).setLngLat(userPosition).addTo(map);
-  document.getElementById('gps').textContent='GPS: ATTIVO';
-  button.textContent='CALCOLO PERCORSO...';
-  document.getElementById('message').textContent='◆ CALCOLO DEL PERCORSO STRADALE PIÙ RAPIDO';
-  const coords=userPosition[0]+','+userPosition[1]+';'+destinationPosition[0]+','+destinationPosition[1];
-  const url='https://router.project-osrm.org/route/v1/driving/'+coords+'?overview=full&geometries=geojson&steps=true';
-  const response=await fetch(url);
-  if(!response.ok)throw new Error('ROUTE_SERVER');
-  const result=await response.json();
-  if(result.code!=='Ok'||!result.routes||!result.routes.length)throw new Error('NO_ROUTE');
-  const route=result.routes[0];
-  activeRoute=route.geometry.coordinates;window.activeRouteDuration=route.duration;
-  routeSteps=(route.legs||[]).flatMap(l=>l.steps||[]);
-  routeCum=[0];for(let i=1;i<activeRoute.length;i++)routeCum[i]=routeCum[i-1]+metersBetween(activeRoute[i-1],activeRoute[i]);
-  routeSteps.forEach(s=>{const loc=s.maneuver?.location;if(loc){let best=Infinity,ix=0;activeRoute.forEach((p,i)=>{const d=metersBetween(loc,p);if(d<best){best=d;ix=i;}});s._routeIndex=ix;}else s._routeIndex=0;});
-  const feature={type:'Feature',properties:{},geometry:route.geometry};
-  if(map.getSource('active-route'))map.getSource('active-route').setData(feature);
-  else{
-   map.addSource('active-route',{type:'geojson',data:feature});
-   map.addLayer({id:'active-route-line',type:'line',source:'active-route',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#b7f34a','line-width':8,'line-opacity':.98}});
-  }
-  const travelled={type:'Feature',properties:{},geometry:{type:'LineString',coordinates:[userPosition,userPosition]}};
-  if(!map.getSource('travelled-route')){map.addSource('travelled-route',{type:'geojson',data:travelled});map.addLayer({id:'travelled-route-line',type:'line',source:'travelled-route',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#ffffff','line-width':4,'line-opacity':.7}});}
-  const bounds=new maplibregl.LngLatBounds(userPosition,userPosition);
-  route.geometry.coordinates.forEach(point=>bounds.extend(point));
-  map.fitBounds(bounds,{padding:{top:145,bottom:190,left:45,right:45},duration:1200});
-  navigationActive=true;navCameraReady=false;previousGpsPosition=null;
-  document.body.classList.add('nav-mode');
-  document.getElementById('nav-hud').classList.add('visible');
-  document.querySelector('.search').style.display='none';
-  button.disabled=false;button.classList.add('stop');button.textContent='■ TERMINA NAVIGAZIONE';
-  document.getElementById('status').textContent='NAVIGAZIONE ATTIVA';
-  const km=(route.distance/1000).toFixed(1);
-  const mins=Math.max(1,Math.round(route.duration/60));
-  document.getElementById('distance').textContent=km+' km · circa '+mins+' min · in auto';
-  document.getElementById('message').textContent='◆ PERCORSO PRONTO · PARTENZA DALLA TUA POSIZIONE';
-  updateNavigationProgress(userPosition);
-  watchId=navigator.geolocation.watchPosition(p=>{
-   userPosition=[p.coords.longitude,p.coords.latitude];
-   if(userMarker)userMarker.setLngLat(userPosition);
-   updateNavigationProgress(userPosition);
-  },err=>{document.getElementById('gps').textContent='GPS: SEGNALE DEBOLE';}, {enableHighAccuracy:true,maximumAge:1500,timeout:20000});
- }catch(err){
-  button.disabled=false;button.classList.remove('stop');button.textContent='▶ AVVIA NAVIGAZIONE';
-  if(err.code===1){
-   document.getElementById('gps').textContent='GPS: BLOCCATO';
-   document.getElementById('message').textContent='POSIZIONE NEGATA: AUTORIZZA LA LOCALIZZAZIONE NELLE IMPOSTAZIONI DEL SITO';
-  }else if(err.code===2||err.code===3){
-   document.getElementById('gps').textContent='GPS: NON DISPONIBILE';
-   document.getElementById('message').textContent='GPS NON RILEVATO: ATTIVA LA POSIZIONE DEL DISPOSITIVO E RIPROVA';
-  }else if(err.message==='NO_ROUTE'){
-   document.getElementById('message').textContent='NESSUN PERCORSO STRADALE TROVATO PER QUESTI DUE PUNTI';
-  }else if(err.message==='ROUTE_SERVER'){
-   document.getElementById('message').textContent='SERVIZIO PERCORSI MOMENTANEAMENTE NON DISPONIBILE · RIPROVA';
-  }else{
-   document.getElementById('message').textContent='ERRORE DI RETE NEL CALCOLO · CONTROLLA INTERNET E RIPROVA';
-  }
+ if(!destinationPosition||!activeRoute||!activeRoute.length){
+  document.getElementById('message').textContent='PRIMA CERCA UNA DESTINAZIONE E ATTENDI IL CALCOLO DEL PERCORSO';
+  return;
  }
+ navigationActive=true;navCameraReady=false;previousGpsPosition=null;
+ document.body.classList.add('nav-mode');
+ document.getElementById('nav-hud').classList.add('visible');
+ document.querySelector('.search').style.display='none';
+ button.disabled=false;button.classList.add('stop');button.textContent='■ TERMINA NAVIGAZIONE';
+ document.getElementById('status').textContent='NAVIGAZIONE ATTIVA';
+ document.getElementById('message').textContent='NAVIGAZIONE AVVIATA · SEGNALE GPS ATTIVO';
+ updateNavigationProgress(userPosition);
+ watchId=navigator.geolocation.watchPosition(p=>{
+  userPosition=[p.coords.longitude,p.coords.latitude];
+  if(userMarker)userMarker.setLngLat(userPosition);
+  updateNavigationProgress(userPosition);
+  const speed=p.coords.speed;
+  document.getElementById('nav-speed').textContent=(speed!==null&&Number.isFinite(speed)?Math.round(speed*3.6):0)+' km/h';
+ },err=>{
+  document.getElementById('gps').textContent='GPS: SEGNALE DEBOLE';
+ },{enableHighAccuracy:true,maximumAge:1000,timeout:20000});
 }
 document.getElementById('nav-exit').addEventListener('click',()=>{if(navigationActive)toggleNavigation();});
 function setupPoiControls(){
