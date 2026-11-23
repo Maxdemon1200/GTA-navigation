@@ -8,11 +8,11 @@
 <script src="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=Rajdhani:wght@500;600;700&display=swap');
-:root{--lime:#8b5cf6;--panel:rgba(15,19,15,.9);--line:rgba(224,239,211,.22)}
+:root{--lime:#ff4f91;--panel:rgba(15,17,22,.9);--line:rgba(245,220,228,.24)}
 *{box-sizing:border-box}
 body{margin:0;background:#090d12;color:#f5f5eb;font-family:'Rajdhani',sans-serif;overflow:hidden}
 #map{position:absolute;inset:0}
-#map:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,#080b0877,transparent 22%,transparent 72%,#080b0866)}
+#map:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,#12121c35,transparent 18%,transparent 76%,#12121c45)}
 .top{position:absolute;top:17px;left:20px;right:20px;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
 .logo{font:900 35px/.8 'Barlow Condensed';letter-spacing:1px;color:#fff;text-shadow:2px 3px 0 #30352b,0 4px 12px #000}
 .logo span{display:block;color:var(--lime);font:800 13px 'Rajdhani';letter-spacing:5px;margin-top:7px}
@@ -43,14 +43,14 @@ button{border:0;border-radius:2px;background:var(--lime);color:#151a10;font:900 
 #nav-hud.visible{display:block}
 #nav-turn{font:900 22px/1.1 'Barlow Condensed';letter-spacing:1px;color:#fff}
 #nav-sub{font:700 11px 'Rajdhani';letter-spacing:1.5px;color:var(--lime);margin-top:5px}
-#nav-stats{display:flex;gap:22px;margin-top:12px;padding-top:9px;border-top:1px solid #ffffff25;font:700 10px 'Rajdhani';letter-spacing:1.2px;color:#bfc8b9}#compass-status{margin-top:9px;font:700 10px 'Rajdhani';letter-spacing:1.2px;color:#c7b4ff}#compass-enable{margin-top:9px;padding:8px 11px;background:#8b5cf6;color:#130d20;font:900 11px 'Rajdhani';letter-spacing:1.2px;border-radius:4px}
+#nav-stats{display:flex;gap:22px;margin-top:12px;padding-top:9px;border-top:1px solid #ffffff25;font:700 10px 'Rajdhani';letter-spacing:1.2px;color:#bfc8b9}#compass-status{margin-top:9px;font:700 10px 'Rajdhani';letter-spacing:1.2px;color:#ff9fc1}#compass-enable{margin-top:9px;padding:8px 11px;background:#ff4f91;color:#24111a;font:900 11px 'Rajdhani';letter-spacing:1.2px;border-radius:4px}
 #nav-stats span{display:flex;flex-direction:column;gap:3px}#nav-stats b{font:800 17px 'Barlow Condensed';color:#fff;letter-spacing:.5px}
 @media(max-width:600px){#nav-hud{top:68px;left:12px;width:calc(100vw - 24px);padding:10px 12px}#nav-turn{font-size:19px}}
 #poi-panel{position:absolute;top:145px;right:20px;width:270px;z-index:3;padding:0;overflow:hidden;border-left:3px solid var(--lime)}
 #poi-drawer-handle{display:none;position:absolute;z-index:8;left:0;top:45%;width:42px;height:76px;border:1px solid #ffffff44;border-left:0;border-radius:0 9px 9px 0;background:rgba(12,16,12,.94);color:#fff;font:900 20px 'Rajdhani';box-shadow:0 5px 20px #0009}
 #nav-menu-actions{display:none;padding:10px 12px;border-top:1px solid #ffffff24;border-bottom:1px solid #ffffff24;grid-template-columns:1fr 1fr;gap:7px}
 #nav-menu-actions button{min-height:36px;padding:7px;background:#292331;color:#eee4ff;border:1px solid #8b5cf655;font:800 11px 'Rajdhani';letter-spacing:.7px}
-.poi-marker{display:flex;align-items:center;gap:5px;max-width:190px;padding:4px 7px;background:rgba(18,17,25,.94);border:1px solid #a78bfa;border-radius:5px;color:#fff;box-shadow:0 2px 9px #000a;white-space:nowrap;cursor:pointer}
+.poi-marker{display:flex;align-items:center;gap:5px;max-width:190px;padding:4px 7px;background:rgba(18,17,25,.94);border:1px solid #ff78aa;border-radius:5px;color:#fff;box-shadow:0 2px 9px #000a;white-space:nowrap;cursor:pointer}
 .poi-marker-icon{font-size:15px;line-height:1}
 .poi-marker-name{overflow:hidden;text-overflow:ellipsis;font:800 10px 'Rajdhani';letter-spacing:.2px;max-width:145px}
 #poi-toggle,#nav-exit{width:100%;min-height:42px;padding:10px 13px;display:flex;align-items:center;justify-content:space-between;background:transparent;color:#fff;font:900 13px 'Rajdhani';letter-spacing:1.6px;text-align:left}
@@ -72,9 +72,9 @@ body.nav-mode #nav-menu-actions{display:grid}
 body.nav-mode #poi-content{padding:8px 14px 20px}
 body.nav-mode #poi-panel .poi-options{grid-template-columns:1fr}
 body.nav-mode #poi-panel .poi-options label{font-size:14px;min-height:30px}
-body.nav-mode #nav-hud{display:block;position:absolute;top:18px;left:18px;width:min(360px,calc(100vw - 36px));border-left:4px solid #8b5cf6;border-radius:12px;padding:18px 16px 14px}
+body.nav-mode #nav-hud{display:block;position:absolute;top:18px;left:18px;width:min(360px,calc(100vw - 36px));border-left:4px solid #ff4f91;border-radius:12px;padding:18px 16px 14px}
 body.nav-mode #nav-turn{font-size:26px;padding-right:65px}
-body.nav-mode #nav-sub{color:#b9a0ff}
+body.nav-mode #nav-sub{color:#ff9fc1}
 @media(max-width:600px){#poi-panel{top:127px;right:12px;width:min(260px,calc(100vw - 24px));max-height:45vh;overflow:auto}body.nav-mode #poi-panel{width:33.333vw;min-width:230px;max-width:330px;height:100dvh;max-height:100dvh;top:0;left:0;right:auto}body.nav-mode #nav-hud{top:12px;left:12px;width:calc(100vw - 24px)}body.nav-mode #nav-turn{font-size:21px}body.nav-mode #poi-drawer-handle{top:50%;width:38px;height:66px}}
 #results{display:none;position:absolute;top:145px;left:20px;width:min(390px,calc(100vw - 40px));max-height:42vh;overflow:auto;background:rgba(12,16,12,.96);border:1px solid var(--line);border-left:3px solid var(--lime);z-index:5;box-shadow:0 12px 35px #000b;backdrop-filter:blur(14px)}
 .result-item{display:block;width:100%;padding:11px 13px;text-align:left;background:transparent;color:#f5f5eb;border:0;border-bottom:1px solid #ffffff20;font:600 13px 'Rajdhani';letter-spacing:.3px;line-height:1.35}
@@ -213,27 +213,27 @@ function applyGtaSixMapPalette(){
  layers.forEach(layer=>{
   const id=(layer.id||'').toLowerCase();
   const sourceLayer=(layer['source-layer']||'').toLowerCase();
-  if(layer.type==='background')safePaint(layer.id,'background-color','#c9c4b5');
+  if(layer.type==='background')safePaint(layer.id,'background-color','#d8d0c0');
   if(layer.type==='fill'){
-   if(/water/.test(id)||sourceLayer==='water')safePaint(layer.id,'fill-color','#78aeb7');
-   else if(/park|garden|grass|wood|forest/.test(id)||/park|grass|wood|forest/.test(sourceLayer))safePaint(layer.id,'fill-color','#83a17c');
-   else if(/landuse|landcover|residential|industrial|commercial/.test(id)||/landuse|landcover/.test(sourceLayer))safePaint(layer.id,'fill-color','#c4c0b2');
-   else if(/building/.test(id)||sourceLayer==='building')safePaint(layer.id,'fill-color','#a9a294');
+   if(/water/.test(id)||sourceLayer==='water')safePaint(layer.id,'fill-color','#49aebb');
+   else if(/park|garden|grass|wood|forest/.test(id)||/park|grass|wood|forest/.test(sourceLayer))safePaint(layer.id,'fill-color','#73977a');
+   else if(/landuse|landcover|residential|industrial|commercial/.test(id)||/landuse|landcover/.test(sourceLayer))safePaint(layer.id,'fill-color','#d2c8b5');
+   else if(/building/.test(id)||sourceLayer==='building')safePaint(layer.id,'fill-color','#d4c3aa');
   }
   if(layer.type==='line'){
-   if(/waterway/.test(id)||sourceLayer==='waterway')safePaint(layer.id,'line-color','#6b9fa9');
+   if(/waterway/.test(id)||sourceLayer==='waterway')safePaint(layer.id,'line-color','#3e9eaa');
    else if(/transportation|road|street/.test(id)||sourceLayer==='transportation'){
     const isCasing=/casing|outline|case/.test(id);
     const isMajor=/motorway|trunk|primary|highway/.test(id);
-    safePaint(layer.id,'line-color',isCasing?'#8d887d':(isMajor?'#e1b77c':'#eee9dc'));
+    safePaint(layer.id,'line-color',isCasing?'#a79b8b':(isMajor?'#efad72':'#f1e8d9'));
    }
-   else if(/boundary/.test(id)||sourceLayer==='boundary')safePaint(layer.id,'line-color','#aaa596');
+   else if(/boundary/.test(id)||sourceLayer==='boundary')safePaint(layer.id,'line-color','#aaa08e');
   }
   if(layer.type==='symbol'){
-   if(/water/.test(id))safePaint(layer.id,'text-color','#426f79');
-   else if(/road|transportation/.test(id))safePaint(layer.id,'text-color','#655f55');
-   else safePaint(layer.id,'text-color','#4f5149');
-   safePaint(layer.id,'text-halo-color','#d8d2c3');
+   if(/water/.test(id))safePaint(layer.id,'text-color','#276d78');
+   else if(/road|transportation/.test(id))safePaint(layer.id,'text-color','#756756');
+   else safePaint(layer.id,'text-color','#514d46');
+   safePaint(layer.id,'text-halo-color','#eee6d7');
    safePaint(layer.id,'text-halo-width',1.1);
   }
  });
@@ -252,10 +252,10 @@ map.on('load',()=>{
    type:'fill-extrusion',
    minzoom:12,
    paint:{
-    'fill-extrusion-color':['interpolate',['linear'],['coalesce',['get','render_height'],8],0,'#c4bba8',18,'#a99f8d',55,'#877f73'],
+    'fill-extrusion-color':['interpolate',['linear'],['coalesce',['get','render_height'],8],0,'#e0d1b9',12,'#d1b99d',28,'#bd9f8c',60,'#9f827c'],
     'fill-extrusion-height':['coalesce',['get','render_height'],8],
     'fill-extrusion-base':['coalesce',['get','render_min_height'],0],
-    'fill-extrusion-opacity':0.98,
+    'fill-extrusion-opacity':0.97,
     'fill-extrusion-vertical-gradient':true
    }
   },labelLayer.id);
@@ -269,7 +269,7 @@ function locate(){
  navigator.geolocation.getCurrentPosition(pos=>{
   userPosition=[pos.coords.longitude,pos.coords.latitude];
   if(userMarker)userMarker.remove();
-  userMarker=new maplibregl.Marker({color:'#a8e638'}).setLngLat(userPosition).addTo(map);
+  userMarker=new maplibregl.Marker({color:'#ff4f91'}).setLngLat(userPosition).addTo(map);
   map.flyTo({center:userPosition,zoom:16,pitch:65});
   document.getElementById('gps').textContent='GPS: ATTIVO';
   document.getElementById('message').textContent='POSIZIONE RILEVATA';
@@ -325,7 +325,7 @@ async function prepareRoutePreview(){
   const pos=await getPositionForRoute();
   userPosition=[pos.coords.longitude,pos.coords.latitude];
   if(userMarker)userMarker.remove();
-  userMarker=new maplibregl.Marker({color:'#8b5cf6'}).setLngLat(userPosition).addTo(map);
+  userMarker=new maplibregl.Marker({color:'#ff4f91'}).setLngLat(userPosition).addTo(map);
   document.getElementById('gps').textContent='GPS: ATTIVO';
   const coords=userPosition[0]+','+userPosition[1]+';'+destinationPosition[0]+','+destinationPosition[1];
   const response=await fetch('https://router.project-osrm.org/route/v1/driving/'+coords+'?overview=full&geometries=geojson&steps=true');
@@ -341,7 +341,7 @@ async function prepareRoutePreview(){
   if(map.getSource('active-route'))map.getSource('active-route').setData(feature);
   else{
    map.addSource('active-route',{type:'geojson',data:feature});
-   map.addLayer({id:'active-route-line',type:'line',source:'active-route',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#8b5cf6','line-width':8,'line-opacity':.98}});
+   map.addLayer({id:'active-route-line',type:'line',source:'active-route',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#ff4f91','line-width':7,'line-opacity':1}});
   }
   const bounds=new maplibregl.LngLatBounds(userPosition,userPosition);
   route.geometry.coordinates.forEach(point=>bounds.extend(point));
