@@ -155,6 +155,7 @@ body.nav-mode #nav-sub{color:#ff9fc1}
   <div class="big" id="status">FREE ROAM</div>
    <div id="travel-modes" aria-label="Modalità di viaggio"><button type="button" data-travel-mode="car" class="active" aria-pressed="true">🚗 AUTO</button><button type="button" data-travel-mode="foot" aria-pressed="false">🚶 A PIEDI</button></div>
   <div class="info" id="distance">Nessun percorso attivo</div>
+   <div style="margin-top:5px;font:600 9px Rajdhani;color:#8f998d;letter-spacing:.4px">PERCORSI: © OPENSTREETMAP · FOSSGIS</div>
   <button id="start-nav" onclick="toggleNavigation()">▶ AVVIA NAVIGAZIONE</button>
  </div>
  <div class="controls">
@@ -183,7 +184,7 @@ let destinationPosition=null;
 let travelMode='car';
 let routeRequestToken=0;
 function routeServiceUrl(coords){const mode=travelMode==='foot'?'foot':'car';const profile=mode==='foot'?'foot':'driving';return 'https://routing.openstreetmap.de/routed-'+mode+'/route/v1/'+profile+'/'+coords+'?overview=full&geometries=geojson&steps=true';}
-function selectTravelMode(mode){if(mode!=='car'&&mode!=='foot')return;if(travelMode===mode)return;travelMode=mode;document.querySelectorAll('[data-travel-mode]').forEach(btn=>{const active=btn.dataset.travelMode===mode;btn.classList.toggle('active',active);btn.setAttribute('aria-pressed',String(active));});if(destinationPosition)prepareRoutePreview();}
+function selectTravelMode(mode){if(mode!=='car'&&mode!=='foot')return;if(travelMode===mode)return;travelMode=mode;document.querySelectorAll('[data-travel-mode]').forEach(btn=>{const active=btn.dataset.travelMode===mode;btn.classList.toggle('active',active);btn.setAttribute('aria-pressed',String(active));});if(destinationPosition){activeRoute=null;const button=document.getElementById('start-nav');button.disabled=true;button.textContent='CALCOLO PERCORSO...';document.getElementById('status').textContent='CALCOLO PERCORSO';document.getElementById('distance').textContent=mode==='foot'?'Calcolo percorso a piedi...':'Calcolo percorso in auto...';if(map.getSource('active-route'))map.getSource('active-route').setData({type:'Feature',properties:{},geometry:{type:'LineString',coordinates:[]}});prepareRoutePreview();}}
 let navigationActive=false;
 let watchId=null;
 let activeRoute=null;
